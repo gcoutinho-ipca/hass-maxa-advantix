@@ -7,9 +7,13 @@ different jobs.
 custom_components/maxa_advantix/brand/     <- shipped with the integration
 brands/custom_integrations/maxa_advantix/  <- for the pull request below
 ├── icon.png      256 x 256
-├── icon@2x.png   512 x 512
-└── logo.png      512 x 512
+└── icon@2x.png   512 x 512
 ```
+
+There is no `logo.png`, and that is deliberate. The brands guidance says that when
+the logo would be the same image as the icon, only the icon should be submitted, and
+the icon is used as the logo's fallback. A square 512 x 512 logo would fail their
+size rule anyway, which wants the shortest side between 128 and 256 pixels.
 
 **The in-repository copy** is what HACS checks first. Its validation looks for
 `custom_components/<domain>/brand/icon.png` and only falls back to the brands
@@ -41,7 +45,7 @@ git commit -m "Add MAXA / Advantix heat pump"
 git push -u origin add-maxa-advantix
 gh pr create --repo home-assistant/brands \
   --title "Add MAXA / Advantix heat pump (custom integration)" \
-  --body "Icon and logo for the maxa_advantix custom integration: https://github.com/gcoutinho-ipca/hass-maxa-advantix"
+  --body "Icon for the maxa_advantix custom integration: https://github.com/gcoutinho-ipca/hass-maxa-advantix"
 ```
 
 ## About the artwork

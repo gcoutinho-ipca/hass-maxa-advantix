@@ -103,18 +103,37 @@ def build(size: int) -> Image.Image:
     return icon.resize((size, size), Image.LANCZOS)
 
 
+#: The only two files either destination needs.
+#
+# No logo is produced, deliberately. The brands guidance is explicit: when the logo
+# would be the same image as the icon, submit only the icon, and the icon is used as
+# the logo's fallback. A square 512x512 "logo" would also fail their size rule,
+# which wants the shortest side between 128 and 256 pixels.
+NAMES = ("icon.png", "icon@2x.png")
+
+
 def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    icon512 = build(512)
-    icon512.save(OUT / "icon@2x.png")
-    build(256).save(OUT / "icon.png")
-    # brands accepts a logo identical to the icon when there is no separate one.
-    icon512.save(OUT / "logo.png")
-    for name in ("icon.png", "icon@2x.png", "logo.png"):
-        path = OUT / name
-        with Image.open(path) as opened:
-            print(f"{name}: {opened.size[0]}x{opened.size[1]} {opened.mode} "
-                  f"{path.stat().st_size} bytes")
+    """Render the icons into both destinations."""
+    rendered = {"icon.png": build(256), "icon@2x.png": build(512)}
+
+    for target in (OUT, IN_REPO):
+        target.mkdir(parents=True, exist_ok=True)
+        for name in NAMES:
+            rendered[name].save(target / name)
+
+        for name in NAMES:
+            path = target / name
+            with Image.open(path) as opened:
+                print(
+                    f"{path.relative_to(REPO)}: {opened.size[0]}x{opened.size[1]} "
+                    f"{opened.mode} {path.stat().st_size} bytes"
+                )
+
+    stray = [p for t in (OUT, IN_REPO) for p in t.glob("logo*.png")]
+    if stray:
+        print("\nleftover logo files, remove them:")
+        for path in stray:
+            print(f"  {path.relative_to(REPO)}")
 
 
 if __name__ == "__main__":

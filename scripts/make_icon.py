@@ -1,15 +1,41 @@
 #!/usr/bin/env python3
-"""Generate the brand assets for home-assistant/brands.
-
-The design is deliberately not derived from the manufacturer's visual identity: a
-rounded square with a cold-to-warm gradient, because these machines are
-reversible, and a three-blade fan, because that is the universal shorthand for an
-outdoor unit.
-
-Renders at 4x and downsamples, which is the simplest way to get decent
-anti-aliasing with nothing but Pillow.
+"""Generate the integration's brand assets.
 
     python scripts/make_icon.py
+
+## Where they go, and why there is only one destination
+
+Home Assistant 2026.3 introduced the Brands Proxy API, and with it the ability for a
+custom integration to carry its own icons in `custom_components/<domain>/brand/`.
+Those take priority over the brands CDN, and the announcement is explicit that no
+separate repository submission is needed.
+
+So there is no pull request to home-assistant/brands here, and that is not an
+omission. That repository's own pull request template now states that submissions for
+new custom components are no longer accepted, and its type-of-change list covers core
+integrations only. Sending one would waste a reviewer's time to be told the same
+thing.
+
+## What is generated
+
+`icon.png` at 256x256 and `icon@2x.png` at 512x512, which are the two sizes the
+brands specification requires.
+
+No logo. When the logo would be the same image as the icon, the guidance is to ship
+only the icon and let it stand in as the logo. A square 512x512 logo would fail the
+size rule anyway, which wants the shortest side between 128 and 256 pixels. Dark
+variants (`dark_icon.png` and friends) are supported by Home Assistant and could be
+added here; the current icon reads well on both themes, so there are none.
+
+## The design
+
+Deliberately not derived from the manufacturer's visual identity, which would be a
+trademark question nobody needs: a rounded square with a cold-to-warm gradient,
+because these machines are reversible, and a three-blade fan, because that is the
+universal shorthand for an outdoor unit.
+
+Renders at 4x and downsamples, which is the simplest way to get decent anti-aliasing
+with nothing but Pillow.
 """
 
 from __future__ import annotations
@@ -20,17 +46,6 @@ import pathlib
 from PIL import Image, ImageDraw
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-
-# Two destinations, because HACS accepts either.
-#
-# `brands/` holds the copy for a pull request to home-assistant/brands, which is
-# what puts the icon in the Home Assistant UI for everyone.
-#
-# `custom_components/maxa_advantix/brand/` is HACS's in-repository fallback, checked
-# first and used when the brands repository has no entry yet. Shipping both means
-# the HACS validation passes on day one instead of waiting on someone else's review
-# queue.
-OUT = REPO / "brands" / "custom_integrations" / "maxa_advantix"
 IN_REPO = REPO / "custom_components" / "maxa_advantix" / "brand"
 
 SS = 4  # supersampling factor
@@ -103,37 +118,30 @@ def build(size: int) -> Image.Image:
     return icon.resize((size, size), Image.LANCZOS)
 
 
-#: The only two files either destination needs.
-#
-# No logo is produced, deliberately. The brands guidance is explicit: when the logo
-# would be the same image as the icon, submit only the icon, and the icon is used as
-# the logo's fallback. A square 512x512 "logo" would also fail their size rule,
-# which wants the shortest side between 128 and 256 pixels.
-NAMES = ("icon.png", "icon@2x.png")
+#: The required sizes, and nothing else. See the module docstring for why no logo.
+SIZES = {"icon.png": 256, "icon@2x.png": 512}
 
 
 def main() -> None:
-    """Render the icons into both destinations."""
-    rendered = {"icon.png": build(256), "icon@2x.png": build(512)}
+    """Render the icons into the integration's brand directory."""
+    IN_REPO.mkdir(parents=True, exist_ok=True)
 
-    for target in (OUT, IN_REPO):
-        target.mkdir(parents=True, exist_ok=True)
-        for name in NAMES:
-            rendered[name].save(target / name)
+    for name, size in SIZES.items():
+        path = IN_REPO / name
+        build(size).save(path)
+        with Image.open(path) as opened:
+            print(
+                f"{path.relative_to(REPO)}: {opened.size[0]}x{opened.size[1]} "
+                f"{opened.mode} {path.stat().st_size} bytes"
+            )
 
-        for name in NAMES:
-            path = target / name
-            with Image.open(path) as opened:
-                print(
-                    f"{path.relative_to(REPO)}: {opened.size[0]}x{opened.size[1]} "
-                    f"{opened.mode} {path.stat().st_size} bytes"
-                )
-
-    stray = [p for t in (OUT, IN_REPO) for p in t.glob("logo*.png")]
-    if stray:
-        print("\nleftover logo files, remove them:")
-        for path in stray:
-            print(f"  {path.relative_to(REPO)}")
+    # A leftover file here ends up in the release zip and in front of users, so it
+    # is worth naming rather than ignoring.
+    unexpected = sorted(p.name for p in IN_REPO.iterdir() if p.name not in SIZES)
+    if unexpected:
+        print("\nunexpected files in the brand directory, remove them:")
+        for name in unexpected:
+            print(f"  {name}")
 
 
 if __name__ == "__main__":

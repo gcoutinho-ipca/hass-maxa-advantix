@@ -114,6 +114,18 @@ Findings from the pre-release audit, and what was done about each.
 `p/insecure-transport`, `p/security-audit` and `p/owasp-top-ten`, and no remaining
 findings for `p/github-actions`.
 
+### Brand icons
+
+The icon ships in `custom_components/maxa_advantix/brand/`, at 256x256 and 512x512,
+and that is the whole story. Home Assistant 2026.3 introduced the Brands Proxy API,
+which serves icons bundled with a custom integration and gives them priority over the
+brands CDN, with no separate repository submission needed.
+
+There is deliberately no pull request to `home-assistant/brands`: that repository's
+own template now states that submissions for new custom components are no longer
+accepted. And there is no logo, because the guidance is to ship only the icon when the
+logo would be the same image, and a square 512x512 logo fails the size rule regardless.
+
 ### Validation
 
 `scripts/validate.sh` runs every check the CI runs, locally, using the same

@@ -10,6 +10,14 @@
 # The layout follows the order in which these things actually get looked at:
 # controls first, then the two numbers that tell you whether the machine is
 # healthy, then the detail, then alarms.
+#
+# In read-only mode the Control and Advanced sections will be empty: those
+# platforms are never set up, so the climate, water_heater, number, select, switch
+# and button entities below do not exist. Delete those two sections and you have a
+# monitoring dashboard.
+#
+# The suffixes here are checked against the real entities by `tests/test_dashboard.py`,
+# so what needs adjusting is the device part of each id and nothing else.
 
 views:
   - title: Heat pump
@@ -39,9 +47,9 @@ views:
           - type: entities
             entities:
               - entity: sensor.maxa_machine_state
-              - entity: sensor.maxa_dhw_tank
+              - entity: sensor.maxa_hot_water_tank
                 name: Tank
-              - entity: number.maxa_dhw_setpoint
+              - entity: number.maxa_hot_water_setpoint
                 name: Hot water setpoint
 
       # ── Health: the two numbers that matter ─────────────────────────────────
@@ -54,7 +62,7 @@ views:
           # around 5 K; sustained values above 8 K mean a flow restriction, so the
           # gauge is banded accordingly rather than on a pretty scale.
           - type: gauge
-            entity: sensor.maxa_delta_t
+            entity: sensor.maxa_water_delta_t
             name: Water delta T
             min: 0
             max: 20
@@ -77,7 +85,7 @@ views:
             entities:
               - entity: sensor.maxa_water_inlet
               - entity: sensor.maxa_water_outlet
-              - entity: sensor.maxa_dhw_tank
+              - entity: sensor.maxa_hot_water_tank
 
       # ── Detail ──────────────────────────────────────────────────────────────
       - type: grid
@@ -87,11 +95,11 @@ views:
             heading_style: title
           - type: entities
             entities:
-              - entity: sensor.maxa_outdoor
+              - entity: sensor.maxa_outdoor_temperature
               - entity: sensor.maxa_high_pressure
               - entity: sensor.maxa_low_pressure
-              - entity: sensor.maxa_fan
-              - entity: sensor.maxa_circulator
+              - entity: sensor.maxa_condenser_fan
+              - entity: sensor.maxa_circulator_pump
               - type: divider
               - entity: binary_sensor.maxa_defrosting
               - entity: binary_sensor.maxa_anti_legionella_running

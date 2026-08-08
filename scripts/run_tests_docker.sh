@@ -46,7 +46,7 @@ exec docker run --rm \
     # reports as skipped, which reads like success. `test_blueprints.py` asserts the
     # expected set is present for exactly that reason.
     cp -r /src/custom_components /src/tests /src/blueprints /src/scripts \
-          /src/pyproject.toml /work/
+          /src/examples /src/pyproject.toml /work/
     cd /work
     exec pytest '"$(printf '%q ' "${@:-tests}")"'
   '

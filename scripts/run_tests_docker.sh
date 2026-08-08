@@ -41,7 +41,12 @@ exec docker run --rm \
   sh -c '
     set -e
     mkdir -p /work
-    cp -r /src/custom_components /src/tests /src/pyproject.toml /work/
+    # `blueprints` and `scripts` are copied too, because tests validate them.
+    # Forgetting one does not fail loudly: a parametrised test over an empty glob
+    # reports as skipped, which reads like success. `test_blueprints.py` asserts the
+    # expected set is present for exactly that reason.
+    cp -r /src/custom_components /src/tests /src/blueprints /src/scripts \
+          /src/pyproject.toml /work/
     cd /work
     exec pytest '"$(printf '%q ' "${@:-tests}")"'
   '

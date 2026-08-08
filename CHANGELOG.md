@@ -114,4 +114,30 @@ Findings from the pre-release audit, and what was done about each.
 `p/insecure-transport`, `p/security-audit` and `p/owasp-top-ten`, and no remaining
 findings for `p/github-actions`.
 
+### Validation
+
+`scripts/validate.sh` runs every check the CI runs, locally, using the same
+official container images. A contributor can know a change is good before opening a
+pull request, and a maintainer can reproduce a red run without pushing commits to
+find out why.
+
+At release: `hassfest` clean with no warnings, all nine HACS checks passing, 232
+tests passing, and the privacy and YAML checks clean.
+
+Two of those found real problems that the file-level checks could not:
+
+- `hassfest` pointed out that an integration implementing `async_setup` must
+  declare a config schema. Without one Home Assistant silently accepts a
+  `maxa_advantix:` block in `configuration.yaml` and validates nothing, leaving the
+  user waiting for an effect that never arrives.
+- The HACS action revealed that brand assets are checked inside the repository first
+  (`custom_components/<domain>/brand/`) and only then in the brands repository, so
+  the icons now ship with the integration and the check passes without waiting on
+  another project's review queue.
+
+`tests/test_blueprints.py` validates the blueprints with Home Assistant's own
+`Blueprint` class and then substitutes every input and runs the result through the
+real automation schema. Parsing YAML successfully is not the same as being
+importable, and the difference shows up on a user's machine rather than here.
+
 [1.0.0]: https://github.com/gcoutinho-ipca/hass-maxa-advantix/releases/tag/v1.0.0

@@ -294,6 +294,18 @@ Register maps for other controller generations are the most useful contribution
 there is. Use `maxa_advantix.read_register`, and please say which controller and
 which firmware revision the numbers came from.
 
+Before opening a pull request, run everything the CI runs:
+
+```bash
+./scripts/validate.sh          # privacy, YAML, hassfest, HACS, tests
+./scripts/validate.sh quick    # skips the two container pulls
+```
+
+It uses the same official images GitHub Actions uses, including Home Assistant's own
+`hassfest` and the HACS validation action, so a pass locally is a pass there. The
+tests run inside the official Home Assistant image, which means nothing has to be
+installed on your machine and they run against the exact Home Assistant users have.
+
 ## A note on the manufacturer's documentation
 
 Register addresses, scales and value ranges are facts of interoperability, and

@@ -20,10 +20,17 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import MaxaConfigEntry
 from .alarms import ALARMS, AlarmDef, is_active
-from .const import KEY_ACTIVE_ALARMS, KEY_ALARM_COUNT, KEY_ALARM_REGISTERS, KEY_DELTA_T
+from .const import (
+    KEY_ACTIVE_ALARMS,
+    KEY_ALARM_COUNT,
+    KEY_ALARM_REGISTERS,
+    KEY_CIRCULATING_FOR,
+    KEY_DELTA_T,
+    KEY_FLOW_RESTRICTED,
+)
 from .coordinator import MaxaCoordinator
 from .entity import MaxaEntity
-from .registers import DELTA_T_MAX
+from .registers import DELTA_T_MAX, FLOW_SETTLE_SECONDS
 
 
 async def async_setup_entry(
@@ -81,12 +88,19 @@ class MaxaProblemBinarySensor(MaxaEntity, BinarySensorEntity):
 
 
 class MaxaFlowRestrictedBinarySensor(MaxaEntity, BinarySensorEntity):
-    """Problem when ΔT exceeds the tolerated maximum: the water is too slow.
+    """Problem when ΔT exceeds the tolerated maximum while water is being pumped.
 
     This fires long before the machine's own flow switch does. The flow switch is
     documented as not being watched during hot-water production, which is
     precisely when a restricted DHW branch shows up, so on some installations
     ΔT is the only warning there is.
+
+    The gate on the circulator matters more than it looks. With the pump stopped
+    the two probes sit in still water and drift apart on their own: a real
+    installation was seen at 10.5 K against a limit of 8 with the pump and fan both
+    at 0 %, and reporting that as a fault means waking somebody for a machine that
+    is fine. The attributes say which of the two conditions is missing, so a user
+    looking at an `off` state can tell "no restriction" from "cannot tell yet".
     """
 
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
@@ -98,16 +112,17 @@ class MaxaFlowRestrictedBinarySensor(MaxaEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        delta_t = self.coordinator.data.get(KEY_DELTA_T)
-        if delta_t is None:
-            return None
-        return delta_t > DELTA_T_MAX
+        return self.coordinator.data.get(KEY_FLOW_RESTRICTED)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        circulating_for = self.coordinator.data.get(KEY_CIRCULATING_FOR, 0)
         return {
             "delta_t": self.coordinator.data.get(KEY_DELTA_T),
             "tolerated_maximum": DELTA_T_MAX,
+            "circulating_for_seconds": circulating_for,
+            "settle_seconds": FLOW_SETTLE_SECONDS,
+            "evaluated": circulating_for >= FLOW_SETTLE_SECONDS,
         }
 
 

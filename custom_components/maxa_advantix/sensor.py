@@ -25,7 +25,9 @@ from .const import (
     KEY_ACTIVE_ALARMS,
     KEY_ALARM_COUNT,
     KEY_BUS,
+    KEY_CIRCULATING_FOR,
     KEY_DELTA_T,
+    KEY_FLOW_RESTRICTED,
     KEY_MACHINE_STATE,
     KEY_MODE_SWITCHES,
     KEY_SWITCHES_PER_HOUR,
@@ -138,11 +140,16 @@ class MaxaDeltaTSensor(MaxaEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        delta_t = self.coordinator.data.get(KEY_DELTA_T)
+        # `flow_restricted` comes from the coordinator rather than being recomputed
+        # here. Two entities answering the same question with slightly different
+        # rules is how a dashboard ends up contradicting itself, and this one used
+        # to: the attribute said restricted whenever ΔT was high, while the check
+        # that matters also requires the pump to be running.
         return {
             "nominal": DELTA_T_NOMINAL,
             "tolerated_maximum": DELTA_T_MAX,
-            "flow_restricted": delta_t is not None and delta_t > DELTA_T_MAX,
+            "flow_restricted": self.coordinator.data.get(KEY_FLOW_RESTRICTED),
+            "circulating_for_seconds": self.coordinator.data.get(KEY_CIRCULATING_FOR, 0),
         }
 
 

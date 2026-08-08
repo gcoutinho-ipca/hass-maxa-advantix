@@ -346,6 +346,19 @@ COMMAND_REGISTER: Final = 7202
 DELTA_T_NOMINAL: Final = 5.0
 DELTA_T_MAX: Final = 8.0
 
+# ΔT above the limit only means a flow restriction while water is actually being
+# pumped. With the circulator stopped, the inlet and outlet probes sit in still
+# water at different heights of the circuit and drift apart on their own: a real
+# installation was observed at 10.5 K with the pump and fan both at 0 %, which is
+# not a fault, just stratification.
+#
+# So the check is gated twice: the pump has to be running, and it has to have been
+# running long enough for the water in the pipe between the two probes to have been
+# replaced. Three minutes is generous for a domestic circuit and cheap to wait,
+# since a real restriction does not clear itself in three minutes.
+CIRCULATOR_MIN_PERCENT: Final = 5.0
+FLOW_SETTLE_SECONDS: Final = 180
+
 # Derived thermal power, kW = flow(l/min) / 60 * 4.186 * ΔT. Only computed when
 # a real flow reading exists, never from a sentinel.
 WATER_HEAT_CAPACITY: Final = 4.186  # kJ/(kg·K)

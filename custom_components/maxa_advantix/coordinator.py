@@ -37,8 +37,10 @@ from .const import (
     KEY_ALARM_COUNT,
     KEY_ALARM_REGISTERS,
     KEY_BUS,
+    KEY_CIRCULATING_FOR,
     KEY_COMMAND,
     KEY_DELTA_T,
+    KEY_FLOW_RESTRICTED,
     KEY_MACHINE_STATE,
     KEY_MODE_SWITCHES,
     KEY_SWITCHES_PER_HOUR,
@@ -47,10 +49,13 @@ from .const import (
 from .modbus_client import ModbusError, ModbusTCPClient
 from .registers import (
     ALARM_FIRST_REGISTER,
+    CIRCULATOR_MIN_PERCENT,
     COMMAND_REGISTER,
     DEFROST_BIT_REQUESTED,
     DEFROST_BIT_RUNNING,
     DEFROST_REGISTER,
+    DELTA_T_MAX,
+    FLOW_SETTLE_SECONDS,
     LEGIONELLA_BIT_FAILED,
     LEGIONELLA_BIT_RUNNING,
     LEGIONELLA_REGISTER,
@@ -95,6 +100,8 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # original fault (286 switches in 48 h). Kept in memory only; long-term
         # statistics are Home Assistant's job, not ours.
         self._last_state: int | None = None
+        #: when the circulator last started, for the ΔT settling gate
+        self._circulating_since: datetime | None = None
         self._mode_switches = 0
         self._last_mode_change: datetime | None = None
         # Timestamps of recent mode changes, for the per-hour rate. A deque rather
@@ -270,6 +277,33 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         inlet, outlet = data.get("water_inlet"), data.get("water_outlet")
         data[KEY_DELTA_T] = (
             round(outlet - inlet, 1) if inlet is not None and outlet is not None else None
+        )
+
+        # 5b. derived: is that ΔT actually a flow restriction?
+        #
+        # Only while the water is moving. With the circulator stopped the two probes
+        # sit in still water and drift apart by themselves, which on a real
+        # installation read 10.5 K against a limit of 8 with the pump at 0 %. Taking
+        # that at face value means alerting the owner of a healthy machine, and an
+        # alert that cries wolf is worse than no alert: the next one gets ignored.
+        circulator = data.get("circulator")
+        now = dt_util.utcnow()
+        if circulator is not None and circulator >= CIRCULATOR_MIN_PERCENT:
+            if self._circulating_since is None:
+                self._circulating_since = now
+        else:
+            self._circulating_since = None
+
+        circulating_for = (
+            (now - self._circulating_since).total_seconds()
+            if self._circulating_since is not None
+            else 0.0
+        )
+        data[KEY_CIRCULATING_FOR] = round(circulating_for)
+        data[KEY_FLOW_RESTRICTED] = (
+            None
+            if data[KEY_DELTA_T] is None
+            else circulating_for >= FLOW_SETTLE_SECONDS and data[KEY_DELTA_T] > DELTA_T_MAX
         )
 
         # 6. derived: thermal power. Requires a real flow reading. Computing it

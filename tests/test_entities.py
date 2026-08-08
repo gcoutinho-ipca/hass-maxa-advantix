@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.climate import HVACAction, HVACMode
 from homeassistant.components.water_heater import STATE_HEAT_PUMP
 from homeassistant.config_entries import ConfigEntryState
@@ -11,6 +14,7 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.maxa_advantix.const import DOMAIN
+from custom_components.maxa_advantix.registers import FLOW_SETTLE_SECONDS
 
 from .fake_client import FakeModbusClient
 
@@ -273,13 +277,93 @@ async def test_delta_t_sensor_carries_the_manufacturer_limits(
 
 
 async def test_flow_restricted_turns_on_above_the_limit(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, fake_client: FakeModbusClient
+    hass: HomeAssistant,
+    loaded_entry: MockConfigEntry,
+    fake_client: FakeModbusClient,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
     fake_client.registers[401] = 570  # outlet 57.0 against inlet 40.0: ΔT 17 K
+    freezer.tick(timedelta(seconds=FLOW_SETTLE_SECONDS + 10))
     await loaded_entry.runtime_data.async_refresh()
     await hass.async_block_till_done()
     entity_id = _entity_id(hass, loaded_entry, Platform.BINARY_SENSOR, "flow_restricted")
     assert hass.states.get(entity_id).state == "on"
+
+
+async def test_flow_restricted_ignores_a_high_delta_t_with_the_pump_stopped(
+    hass: HomeAssistant,
+    loaded_entry: MockConfigEntry,
+    fake_client: FakeModbusClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """The exact state a real installation was found in, and it is not a fault.
+
+    Circulator and fan at 0 %, ΔT 10.5 K against a limit of 8. With no water moving
+    the two probes are simply at different heights of a settled circuit. Reporting
+    that as a restriction means alerting the owner of a healthy machine, and the
+    first false alert is what teaches people to ignore the next real one.
+    """
+    fake_client.registers[7001] = 0  # circulator stopped
+    fake_client.registers[7000] = 0  # fan stopped
+    fake_client.registers[400] = 264  # inlet 26.4
+    fake_client.registers[401] = 369  # outlet 36.9, so ΔT 10.5
+    freezer.tick(timedelta(hours=5))
+    await loaded_entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+
+    entity_id = _entity_id(hass, loaded_entry, Platform.BINARY_SENSOR, "flow_restricted")
+    state = hass.states.get(entity_id)
+    assert state.state == "off"
+    assert state.attributes["delta_t"] == 10.5
+    assert state.attributes["evaluated"] is False
+
+    # And the ΔT sensor's own attribute agrees, rather than contradicting it.
+    delta_t_id = _entity_id(hass, loaded_entry, Platform.SENSOR, "delta_t")
+    assert hass.states.get(delta_t_id).attributes["flow_restricted"] is False
+
+
+async def test_flow_restricted_waits_for_the_water_to_be_replaced(
+    hass: HomeAssistant,
+    loaded_entry: MockConfigEntry,
+    fake_client: FakeModbusClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A pump that just started has not yet moved the water between the probes."""
+    fake_client.registers[401] = 570  # ΔT 17 K, circulator already at 100 %
+    await loaded_entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    entity_id = _entity_id(hass, loaded_entry, Platform.BINARY_SENSOR, "flow_restricted")
+    assert hass.states.get(entity_id).state == "off", "should not judge before settling"
+
+    freezer.tick(timedelta(seconds=FLOW_SETTLE_SECONDS + 1))
+    await loaded_entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == "on"
+
+
+async def test_stopping_the_pump_restarts_the_settling_clock(
+    hass: HomeAssistant,
+    loaded_entry: MockConfigEntry,
+    fake_client: FakeModbusClient,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Otherwise a machine that cycles would inherit the previous run's credit."""
+    fake_client.registers[401] = 570
+    freezer.tick(timedelta(seconds=FLOW_SETTLE_SECONDS + 10))
+    await loaded_entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    entity_id = _entity_id(hass, loaded_entry, Platform.BINARY_SENSOR, "flow_restricted")
+    assert hass.states.get(entity_id).state == "on"
+
+    fake_client.registers[7001] = 0
+    await loaded_entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == "off"
+
+    fake_client.registers[7001] = 1000
+    await loaded_entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == "off", "the clock restarted from zero"
 
 
 async def test_active_alarms_sensor_lists_codes(

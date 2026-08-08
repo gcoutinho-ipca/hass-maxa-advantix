@@ -13,6 +13,24 @@ copy it from.
 
 ### Fixed
 
+- **The flow restriction check fired on healthy machines that were simply idle.**
+  ΔT above the tolerated maximum only means restricted flow while water is being
+  pumped. With the circulator stopped the inlet and outlet probes sit in still water
+  at different heights of the circuit and drift apart on their own: a real
+  installation was found at 10.5 K against a limit of 8 with the pump and fan both at
+  0 %, with the sensor on and no fault present. The alert blueprint would have sent
+  that, and the first false alert is what teaches somebody to ignore the next real
+  one.
+
+  The check is now gated twice: the pump must be running, and it must have been
+  running long enough for the water between the two probes to have been replaced,
+  three minutes by default. Stopping the pump restarts that clock, so a machine that
+  cycles cannot inherit credit from its previous run. The attributes distinguish
+  "no restriction" from "cannot tell yet", which an `off` state alone cannot.
+
+  `flow_restricted` is now derived once in the coordinator instead of being
+  recomputed by each entity. The ΔT sensor's attribute of the same name used the
+  looser rule, so the two could contradict each other on the same dashboard.
 - **The example dashboard referenced seven entities that do not exist**, including
   the three most prominent cards on it: the delta T gauge, the tank reading and the
   hot water setpoint. The suffixes had been written from the register keys, while

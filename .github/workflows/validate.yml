@@ -1,0 +1,96 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly, so a Home Assistant release that breaks something is caught before
+    # a user reports it.
+    - cron: "0 6 * * 1"
+
+# Least privilege. Nothing here needs to write to the repository, and a workflow
+# that runs on `pull_request` from forks is exactly where a wider token would
+# eventually be regretted.
+permissions:
+  contents: read
+
+# Every action is pinned to a commit SHA rather than a tag. Tags and branches can
+# be silently repointed by whoever owns the action, which is how several real
+# supply-chain incidents in the Actions ecosystem worked. Dependabot keeps these
+# current, see .github/dependabot.yml.
+jobs:
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: home-assistant/actions/hassfest@a7c616ce81ccda50150bf1595786c71b1883fabb # master
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main
+        with:
+          category: integration
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      # Pinned on purpose, and bumped by hand: Dependabot does not see a version
+      # inside a `run:` line. Unpinned, a ruff release adding a rule turns this job
+      # red without anyone touching the code, and the first person to hit it is
+      # whoever opens the next pull request, who then has to work out that their own
+      # change was not the cause. `scripts/validate.sh` pins the same version, so
+      # local and CI agree about what a clean tree is.
+      - name: Install ruff
+        run: pip install ruff==0.16.2
+      - name: Ruff check
+        run: ruff check custom_components tests scripts
+      - name: Ruff format check
+        run: ruff format --check custom_components tests scripts
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      - name: Install test dependencies
+        run: pip install -r requirements-test.txt
+      - name: Run pytest
+        run: pytest -q
+
+  yaml:
+    name: Blueprints and examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Check every YAML file parses and blueprint inputs resolve
+        run: python scripts/check_yaml.py
+
+  privacy:
+    name: Privacy scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      - name: Check for personal data and private addresses
+        run: python scripts/check_privacy.py

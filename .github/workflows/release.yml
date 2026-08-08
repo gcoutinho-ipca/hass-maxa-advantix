@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    name: Attach installable zip
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a commit SHA, not a tag. See .github/workflows/validate.yml.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # `hacs.json` declares zip_release, so HACS downloads this asset instead of
+      # cloning the repository. The tag and the manifest version must agree, or
+      # users end up with an integration that reports the wrong version forever.
+      #
+      # Note that the tag arrives through the environment rather than through
+      # `${{ }}` interpolation into the shell. Interpolating repository-controlled
+      # text straight into a `run:` block is how script injection in Actions
+      # happens, and a tag name is repository-controlled text.
+      - name: Check the tag matches manifest.json
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          tag="${TAG#v}"
+          manifest=$(python -c "import json;print(json.load(open('custom_components/maxa_advantix/manifest.json'))['version'])")
+          echo "tag=$tag manifest=$manifest"
+          if [ "$tag" != "$manifest" ]; then
+            echo "::error::Tag $tag does not match manifest version $manifest"
+            exit 1
+          fi
+
+      # The zip must contain the integration's files at its root, not the
+      # custom_components/maxa_advantix/ path.
+      - name: Build zip
+        run: |
+          cd custom_components/maxa_advantix
+          zip -r ../../maxa_advantix.zip . -x '*.pyc' -x '__pycache__/*'
+
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release upload "$TAG" maxa_advantix.zip --clobber

@@ -8,11 +8,13 @@
           "host": "Indirizzo IP del gateway",
           "port": "Porta TCP",
           "slave": "ID Modbus (slave)",
-          "model": "Modello del controllore"
+          "model": "Modello del controllore",
+          "read_only": "Modalità sola lettura"
         },
         "data_description": {
           "slave": "Il valore di fabbrica è 1. Impostato dal parametro H126 sulle macchine collegate in rete.",
-          "model": "Usato per la scheda del dispositivo. Solo la mappa registri i-HWAK V4 è verificata direttamente."
+          "model": "Usato per la scheda del dispositivo. Solo la mappa registri i-HWAK V4 è verificata direttamente.",
+          "read_only": "Crea solo sensori, nessun controllo. Da scegliere se il controllore a parete della macchina è ancora collegato, o se si desidera solo la telemetria. Modificabile in seguito."
         }
       },
       "reconfigure": {
@@ -22,7 +24,8 @@
           "host": "Indirizzo IP del gateway",
           "port": "Porta TCP",
           "slave": "ID Modbus (slave)",
-          "model": "Modello del controllore"
+          "model": "Modello del controllore",
+          "read_only": "Modalità sola lettura"
         }
       }
     },
@@ -41,10 +44,12 @@
       "init": {
         "title": "Opzioni",
         "data": {
-          "scan_interval": "Intervallo di lettura"
+          "scan_interval": "Intervallo di lettura",
+          "read_only": "Modalità sola lettura"
         },
         "data_description": {
-          "scan_interval": "Una scansione completa è circa una dozzina di transazioni Modbus. Sotto i 15 s il bus resta senza tempo libero e il pannello della macchina diventa lento."
+          "scan_interval": "Una scansione completa è di sette transazioni Modbus. Sotto i 15 s il bus resta senza tempo libero e il pannello della macchina diventa lento.",
+          "read_only": "Crea solo sensori, nessun controllo. Da scegliere se il controllore a parete della macchina è ancora collegato, o se si desidera solo la telemetria. Modificabile in seguito."
         }
       }
     }
@@ -74,43 +79,105 @@
           "heating_dhw": "Riscaldamento + sanitario"
         }
       },
-      "water_inlet": { "name": "Ingresso acqua" },
-      "water_outlet": { "name": "Uscita acqua" },
-      "dhw_tank": { "name": "Accumulo sanitario" },
-      "high_pressure": { "name": "Alta pressione" },
-      "low_pressure": { "name": "Bassa pressione" },
-      "suction_temp": { "name": "Temperatura di aspirazione" },
-      "outdoor": { "name": "Temperatura esterna" },
-      "discharge_temp": { "name": "Temperatura di scarico" },
-      "flow_rate": { "name": "Portata acqua" },
-      "evaporation_temp": { "name": "Temperatura di evaporazione" },
-      "condensation_temp": { "name": "Temperatura di condensazione" },
-      "compressor_hours": { "name": "Ore compressore" },
-      "fan": { "name": "Ventilatore condensatore" },
-      "circulator": { "name": "Circolatore" },
-      "cooling_setpoint": { "name": "Setpoint raffreddamento" },
-      "heating_setpoint": { "name": "Setpoint riscaldamento" },
-      "dhw_setpoint": { "name": "Setpoint sanitario" },
-      "delta_t": { "name": "Delta T acqua" },
-      "thermal_power": { "name": "Potenza termica" },
-      "active_alarms": { "name": "Allarmi attivi" },
-      "mode_switches": { "name": "Commutazioni di modo" },
-      "last_mode_change": { "name": "Ultimo cambio di modo" },
-      "bus_error_rate": { "name": "Tasso di errore del bus" }
+      "water_inlet": {
+        "name": "Ingresso acqua"
+      },
+      "water_outlet": {
+        "name": "Uscita acqua"
+      },
+      "dhw_tank": {
+        "name": "Accumulo sanitario"
+      },
+      "high_pressure": {
+        "name": "Alta pressione"
+      },
+      "low_pressure": {
+        "name": "Bassa pressione"
+      },
+      "suction_temp": {
+        "name": "Temperatura di aspirazione"
+      },
+      "outdoor": {
+        "name": "Temperatura esterna"
+      },
+      "discharge_temp": {
+        "name": "Temperatura di scarico"
+      },
+      "flow_rate": {
+        "name": "Portata acqua"
+      },
+      "evaporation_temp": {
+        "name": "Temperatura di evaporazione"
+      },
+      "condensation_temp": {
+        "name": "Temperatura di condensazione"
+      },
+      "compressor_hours": {
+        "name": "Ore compressore"
+      },
+      "fan": {
+        "name": "Ventilatore condensatore"
+      },
+      "circulator": {
+        "name": "Circolatore"
+      },
+      "cooling_setpoint": {
+        "name": "Setpoint raffreddamento"
+      },
+      "heating_setpoint": {
+        "name": "Setpoint riscaldamento"
+      },
+      "dhw_setpoint": {
+        "name": "Setpoint sanitario"
+      },
+      "delta_t": {
+        "name": "Delta T acqua"
+      },
+      "thermal_power": {
+        "name": "Potenza termica"
+      },
+      "active_alarms": {
+        "name": "Allarmi attivi"
+      },
+      "mode_switches": {
+        "name": "Commutazioni di modo"
+      },
+      "last_mode_change": {
+        "name": "Ultimo cambio di modo"
+      },
+      "bus_error_rate": {
+        "name": "Tasso di errore del bus"
+      }
     },
     "binary_sensor": {
-      "problem": { "name": "Allarme" },
-      "flow_restricted": { "name": "Portata insufficiente" },
-      "defrost_running": { "name": "Sbrinamento in corso" },
-      "defrost_requested": { "name": "Sbrinamento richiesto" },
-      "legionella_running": { "name": "Anti-legionella in corso" },
-      "legionella_failed": { "name": "Anti-legionella fallito" }
+      "problem": {
+        "name": "Allarme"
+      },
+      "flow_restricted": {
+        "name": "Portata insufficiente"
+      },
+      "defrost_running": {
+        "name": "Sbrinamento in corso"
+      },
+      "defrost_requested": {
+        "name": "Sbrinamento richiesto"
+      },
+      "legionella_running": {
+        "name": "Anti-legionella in corso"
+      },
+      "legionella_failed": {
+        "name": "Anti-legionella fallito"
+      }
     },
     "climate": {
-      "conditioning": { "name": "Climatizzazione" }
+      "conditioning": {
+        "name": "Climatizzazione"
+      }
     },
     "water_heater": {
-      "dhw": { "name": "Acqua calda sanitaria" }
+      "dhw": {
+        "name": "Acqua calda sanitaria"
+      }
     },
     "select": {
       "machine_state": {
@@ -126,18 +193,34 @@
       }
     },
     "number": {
-      "cooling_setpoint": { "name": "Setpoint raffreddamento" },
-      "heating_setpoint": { "name": "Setpoint riscaldamento" },
-      "dhw_setpoint": { "name": "Setpoint sanitario" },
-      "dhw_heater_setpoint": { "name": "Setpoint preparatore sanitario" }
+      "cooling_setpoint": {
+        "name": "Setpoint raffreddamento"
+      },
+      "heating_setpoint": {
+        "name": "Setpoint riscaldamento"
+      },
+      "dhw_setpoint": {
+        "name": "Setpoint sanitario"
+      },
+      "dhw_heater_setpoint": {
+        "name": "Setpoint preparatore sanitario"
+      }
     },
     "switch": {
-      "ambient_call": { "name": "Richiesta climatizzazione" },
-      "dhw_call": { "name": "Richiesta sanitario" }
+      "ambient_call": {
+        "name": "Richiesta climatizzazione"
+      },
+      "dhw_call": {
+        "name": "Richiesta sanitario"
+      }
     },
     "button": {
-      "start_legionella": { "name": "Avvia anti-legionella" },
-      "release_control": { "name": "Rilascia il comando" }
+      "start_legionella": {
+        "name": "Avvia anti-legionella"
+      },
+      "release_control": {
+        "name": "Rilascia il comando"
+      }
     }
   },
   "services": {
@@ -206,6 +289,11 @@
           "description": "Necessario solo con più di una pompa di calore configurata."
         }
       }
+    }
+  },
+  "exceptions": {
+    "read_only": {
+      "message": "Questa pompa di calore è configurata in sola lettura, quindi non è stato scritto nulla. Disattivare la modalità sola lettura nelle opzioni dell'integrazione per consentire il controllo."
     }
   }
 }

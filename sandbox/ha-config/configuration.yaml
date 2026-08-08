@@ -1,0 +1,37 @@
+# Minimal Home Assistant configuration for the sandbox.
+#
+# Deliberately small. The integration is configured through the UI, exactly as a
+# user would configure it, because a YAML shortcut here would test a path that does
+# not exist in the real product.
+
+default_config:
+
+logger:
+  default: info
+  logs:
+    custom_components.maxa_advantix: debug
+
+# The onboarding flow needs somewhere to put the default dashboard.
+frontend:
+
+# Handy while testing blueprints: an enable toggle and a solar block flag, the two
+# helpers the hot water blueprints ask for.
+input_boolean:
+  hot_water_solar_block:
+    name: Hot water solar block
+    icon: mdi:weather-sunny
+  electric_backup_enabled:
+    name: Electric backup enabled
+    icon: mdi:heating-coil
+
+# A stand-in for an immersion heater, so the electric backup blueprint has
+# something to switch that is not a real relay.
+template:
+  - binary_sensor:
+      - name: Sandbox notice
+        state: "on"
+        icon: mdi:test-tube
+        attributes:
+          note: >-
+            This is a test instance talking to a simulated heat pump. The
+            simulator refuses every write.

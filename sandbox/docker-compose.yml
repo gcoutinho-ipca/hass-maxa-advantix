@@ -1,0 +1,54 @@
+# A throwaway Home Assistant with a simulated heat pump behind it.
+#
+#     cd sandbox && docker compose up -d
+#     open http://localhost:8123
+#
+# The simulator runs in READ-ONLY mode by default: every write is refused with a
+# Modbus exception and logged. That is deliberate. It means this sandbox can never
+# command anything, and it means you can prove an integration is not writing by
+# reading the simulator's log rather than by trusting it.
+#
+# To exercise the control side, set MAXA_SIM_ARGS in .env or on the command line:
+#
+#     MAXA_SIM_ARGS="--port 502" docker compose up -d
+#
+# Two ways to get the integration in, matching the two ways a user gets it:
+#
+#   local   the default. Bind-mounts the working tree, so an edit plus a restart
+#           is the whole loop.
+#   github  run ./install-from-github.sh first, which downloads a release the same
+#           way HACS does and unpacks it into ha-config/custom_components. Then
+#           comment out the bind mount below.
+
+services:
+  maxa-sim:
+    image: python:3.13-alpine
+    container_name: maxa-sim
+    restart: unless-stopped
+    command: >
+      python /simulator/modbus_simulator.py
+      --host 0.0.0.0
+      --port 502
+      ${MAXA_SIM_ARGS:---read-only}
+    volumes:
+      - ../scripts/modbus_simulator.py:/simulator/modbus_simulator.py:ro
+    # Not published to the host by default: nothing outside this compose network
+    # needs to reach it, and a Modbus port on a host interface is the one thing
+    # SECURITY.md tells people not to create.
+    expose:
+      - "502"
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: maxa-ha
+    restart: unless-stopped
+    depends_on:
+      - maxa-sim
+    environment:
+      TZ: ${TZ:-Europe/Lisbon}
+    volumes:
+      - ./ha-config:/config
+      # local install: the working tree is the integration
+      - ../custom_components/maxa_advantix:/config/custom_components/maxa_advantix:ro
+    ports:
+      - "127.0.0.1:8123:8123"

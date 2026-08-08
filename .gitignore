@@ -10,6 +10,11 @@ venv/
 htmlcov/
 *.zip
 
-# Manufacturer documentation is not redistributable — keep it out of the repo.
+# Manufacturer documentation is not redistributable: keep it out of the repo.
 *.pdf
 docs/manuals/
+
+# Sandbox: everything Home Assistant generates in the throwaway instance.
+sandbox/ha-config/*
+!sandbox/ha-config/configuration.yaml
+sandbox/.env

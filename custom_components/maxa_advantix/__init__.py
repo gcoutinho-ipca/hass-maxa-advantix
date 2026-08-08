@@ -15,26 +15,45 @@ from homeassistant.helpers.typing import ConfigType
 from .const import (
     CONF_HOST,
     CONF_PORT,
+    CONF_READ_ONLY,
     CONF_SCAN_INTERVAL,
     CONF_SLAVE,
+    DEFAULT_READ_ONLY,
     DEFAULT_SCAN_INTERVAL,
 )
 from .coordinator import MaxaCoordinator
 from .modbus_client import ModbusTCPClient
 from .services import async_register_services
 
-PLATFORMS: list[Platform] = [
+#: Telemetry. Always set up.
+PLATFORMS_READ: list[Platform] = [
     Platform.BINARY_SENSOR,
+    Platform.SENSOR,
+]
+
+#: Control. Skipped entirely in read-only mode, so the entities do not exist
+#: rather than existing and refusing.
+PLATFORMS_WRITE: list[Platform] = [
     Platform.BUTTON,
     Platform.CLIMATE,
     Platform.NUMBER,
     Platform.SELECT,
-    Platform.SENSOR,
     Platform.SWITCH,
     Platform.WATER_HEATER,
 ]
 
 type MaxaConfigEntry = ConfigEntry[MaxaCoordinator]
+
+
+def _read_only(entry: MaxaConfigEntry) -> bool:
+    """Whether this entry is configured for telemetry only.
+
+    Options win over data, so the setting can be changed after setup without
+    reconfiguring the connection.
+    """
+    return entry.options.get(
+        CONF_READ_ONLY, entry.data.get(CONF_READ_ONLY, DEFAULT_READ_ONLY)
+    )
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -54,7 +73,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: MaxaConfigEntry) -> bool
         CONF_SCAN_INTERVAL,
         entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
     )
-    coordinator = MaxaCoordinator(hass, entry, client, scan_interval)
+    coordinator = MaxaCoordinator(
+        hass, entry, client, scan_interval, read_only=_read_only(entry)
+    )
 
     # Fail setup cleanly if the machine does not answer right now: a retry is
     # scheduled by Home Assistant, which is better than a device full of
@@ -62,7 +83,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: MaxaConfigEntry) -> bool
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # The list is remembered on the coordinator rather than recomputed at unload.
+    # Changing the read-only option triggers a reload, and by then the option has
+    # already changed, so recomputing would try to unload platforms that were
+    # never set up and leave the ones that were.
+    platforms = list(PLATFORMS_READ)
+    if not coordinator.read_only:
+        platforms += PLATFORMS_WRITE
+    coordinator.platforms = platforms
+
+    await hass.config_entries.async_forward_entry_setups(entry, platforms)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     # Make sure the coordinator's delayed post-write refresh cannot outlive the
     # entry: removing the integration must leave no timer behind.
@@ -71,10 +102,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: MaxaConfigEntry) -> bool
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: MaxaConfigEntry) -> bool:
-    """Unload the entry and its platforms."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    """Unload the entry and exactly the platforms that were set up."""
+    coordinator = entry.runtime_data
+    return await hass.config_entries.async_unload_platforms(entry, coordinator.platforms)
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: MaxaConfigEntry) -> None:
-    """Reload when options change, e.g. a new scan interval."""
+    """Reload when options change, e.g. the scan interval or read-only mode."""
     await hass.config_entries.async_reload(entry.entry_id)

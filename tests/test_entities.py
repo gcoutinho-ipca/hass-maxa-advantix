@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.maxa_advantix.const import DOMAIN
 
-from .conftest import FakeModbusClient
+from .fake_client import FakeModbusClient
 
 
 async def test_entry_loads_and_unloads(

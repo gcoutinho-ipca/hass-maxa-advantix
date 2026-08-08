@@ -22,6 +22,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
@@ -44,7 +45,6 @@ from .const import (
 from .modbus_client import ModbusError, ModbusTCPClient
 from .registers import (
     ALARM_FIRST_REGISTER,
-    BLOCKS,
     COMMAND_REGISTER,
     DEFROST_BIT_REQUESTED,
     DEFROST_BIT_RUNNING,
@@ -52,6 +52,7 @@ from .registers import (
     LEGIONELLA_BIT_FAILED,
     LEGIONELLA_BIT_RUNNING,
     LEGIONELLA_REGISTER,
+    READ_BLOCKS,
     READ_REGISTERS,
     WATER_HEAT_CAPACITY,
 )
@@ -74,6 +75,7 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         entry: ConfigEntry,
         client: ModbusTCPClient,
         scan_interval: int,
+        read_only: bool = False,
     ) -> None:
         super().__init__(
             hass,
@@ -83,6 +85,10 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self.entry = entry
         self.client = client
+        self.read_only = read_only
+        # Platforms actually set up, remembered so unload matches setup even after
+        # the read-only option has already changed. Filled in by `async_setup_entry`.
+        self.platforms: list[str] = []
         # Mode switch counter since startup. This is the metric that exposed the
         # original fault (286 switches in 48 h). Kept in memory only; long-term
         # statistics are Home Assistant's job, not ours.
@@ -101,8 +107,15 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Run a `safe_write` operation in the executor, under lock, then refresh.
 
         Every write goes through here: one queue, one master, no interleaving
-        with the poll cycle.
+        with the poll cycle. It is also the single place where read-only mode is
+        enforced, which is what makes that mode trustworthy: the write platforms
+        are not created at all, and even an entity left behind by an earlier
+        install cannot get past this point.
         """
+        if self.read_only:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="read_only"
+            )
         async with self._lock:
             await self.hass.async_add_executor_job(func, self.client, *args)
         # Immediate refresh (state and calls appear quickly) plus a delayed one
@@ -200,9 +213,9 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _read_all(self) -> dict[str, Any]:
         """Blocking. Runs in the executor. Reads every block and builds the dict."""
         raw: dict[int, int] = {}
-        for start, length in BLOCKS.values():
-            for offset, value in enumerate(self.client.read_holding(start, length)):
-                raw[start + offset] = value
+        for block in READ_BLOCKS:
+            for offset, value in enumerate(self.client.read_holding(block.start, block.count)):
+                raw[block.start + offset] = value
 
         data: dict[str, Any] = {}
 

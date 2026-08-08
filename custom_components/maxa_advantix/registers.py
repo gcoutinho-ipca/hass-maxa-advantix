@@ -15,6 +15,7 @@ coordinator.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Final
 
@@ -41,8 +42,6 @@ class ReadRegister:
     icon: str | None = None
     #: filter the manufacturer's "probe absent/faulty" sentinel values
     sentinel: bool = True
-    #: which contiguous read block this register belongs to
-    block: str = "misc"
     #: created but disabled in the entity registry (optional hardware)
     enabled_default: bool = True
     #: shown under the device's diagnostics section rather than as a control
@@ -50,24 +49,93 @@ class ReadRegister:
     suggested_display_precision: int | None = None
 
 
-# Contiguous blocks: the coordinator reads each block in a single Modbus
-# transaction and then distributes the values. At 9600 baud a transaction costs
-# 15-40 ms of line time, so 20 individual reads cost noticeably more than the
-# 12 block reads below. The bus is the scarce resource, not CPU.
-BLOCKS: Final[dict[str, tuple[int, int]]] = {
-    "state": (200, 1),
-    "command": (7202, 1),  # active call bits (space / DHW)
-    "cooling_circuit": (253, 2),  # evaporation / condensation
-    "compressor": (305, 1),
-    "water": (400, 15),  # 400..414 inlet, outlet, DHW tank, pressures
-    "refrigerant": (422, 14),  # 422..435 suction, outdoor, discharge
-    "flow": (444, 1),
-    "actuators": (7000, 2),  # fan, circulator
-    "setpoints": (7203, 3),  # cooling, heating, DHW
-    "defrost": (7214, 1),
-    "legionella": (7216, 1),
-    "alarms": (950, 3),  # 950 / 951 / 952
-}
+@dataclass(frozen=True)
+class ReadBlock:
+    """One contiguous Modbus read: `count` registers starting at `start`."""
+
+    start: int
+    count: int
+
+    @property
+    def end(self) -> int:
+        """Last address covered, inclusive."""
+        return self.start + self.count - 1
+
+    def __contains__(self, address: int) -> bool:
+        return self.start <= address <= self.end
+
+    def __str__(self) -> str:
+        return f"{self.start}-{self.end} ({self.count})"
+
+
+# How far apart two needed registers can be before a second transaction is cheaper
+# than reading the gap.
+#
+# At 9600 baud 8N1 a character takes about 1 ms, so a transaction costs roughly
+# 30 ms of fixed overhead (request frame, line turnaround, reply header) and about
+# 2 ms per register in the reply. Sweeping this parameter across the real register
+# set gives:
+#
+#     max_gap   transactions   registers   line time
+#           0             15          24      500 ms
+#           4             12          32      427 ms
+#           8              8          59      364 ms
+#          10              7          69      355 ms   <- optimum starts here
+#          16              7          69      355 ms   <- chosen
+#          48              7          69      355 ms   <- optimum ends here
+#          64              6         121      434 ms
+#
+# So the curve is flat between 10 and 48 and gets worse either side, and 16 sits
+# comfortably in the middle of the flat region. Sixteen registers nobody wants is
+# still cheaper than one more round trip; a hundred is not.
+#
+# `test_registers.py` asserts that the chosen value is still at the optimum, so
+# changing it to something worse fails the build instead of quietly costing bus
+# time on every poll.
+MAX_GAP: Final = 16
+
+# Ceiling on a single read. The protocol allows 125; staying well under keeps each
+# reply small enough that one bad frame costs little to retry, leaves headroom for
+# gateways that quietly cap their buffers below the spec, and is what stops the
+# planner from merging the 400s with the 7000s into one enormous read.
+MAX_BLOCK: Final = 64
+
+# Cost model used by the tests, in milliseconds. Not used at runtime: the plan is
+# computed once at import and the constants above are the tuned result.
+TRANSACTION_OVERHEAD_MS: Final = 30.0
+PER_REGISTER_MS: Final = 2.1
+
+
+def plan_blocks(
+    addresses: Iterable[int], max_gap: int = MAX_GAP, max_block: int = MAX_BLOCK
+) -> tuple[ReadBlock, ...]:
+    """Merge the addresses that must be read into as few transactions as possible.
+
+    Sorted, then greedily extended: an address joins the current block when it fits
+    under `max_block` and the gap since the previous one is at most `max_gap`.
+    Greedy is optimal here because the addresses are sorted and the cost function is
+    monotonic in block length, so there is nothing to gain by splitting earlier.
+
+    Computing this instead of maintaining it by hand has a second benefit beyond the
+    transaction count: adding a register to the map cannot leave it outside every
+    block, which is a bug that reads as "that sensor is always unavailable".
+    """
+    wanted = sorted(set(addresses))
+    if not wanted:
+        return ()
+
+    blocks: list[ReadBlock] = []
+    start = previous = wanted[0]
+    for address in wanted[1:]:
+        gap = address - previous - 1
+        length = address - start + 1
+        if gap > max_gap or length > max_block:
+            blocks.append(ReadBlock(start, previous - start + 1))
+            start = address
+        previous = address
+    blocks.append(ReadBlock(start, previous - start + 1))
+    return tuple(blocks)
+
 
 READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
     ReadRegister(
@@ -76,7 +144,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         icon="mdi:heat-pump",
         state_class=None,
         sentinel=False,
-        block="state",
     ),
     ReadRegister(
         "water_inlet",
@@ -85,7 +152,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfTemperature.CELSIUS,
         "temperature",
         icon="mdi:import",
-        block="water",
         suggested_display_precision=1,
     ),
     ReadRegister(
@@ -95,7 +161,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfTemperature.CELSIUS,
         "temperature",
         icon="mdi:export",
-        block="water",
         suggested_display_precision=1,
     ),
     ReadRegister(
@@ -105,7 +170,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfTemperature.CELSIUS,
         "temperature",
         icon="mdi:water-boiler",
-        block="water",
         suggested_display_precision=1,
     ),
     ReadRegister(
@@ -115,7 +179,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfPressure.BAR,
         "pressure",
         icon="mdi:gauge-full",
-        block="water",
         suggested_display_precision=2,
     ),
     ReadRegister(
@@ -125,7 +188,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfPressure.BAR,
         "pressure",
         icon="mdi:gauge-low",
-        block="water",
         suggested_display_precision=2,
     ),
     ReadRegister(
@@ -135,7 +197,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfTemperature.CELSIUS,
         "temperature",
         icon="mdi:thermometer-low",
-        block="refrigerant",
         enabled_default=False,
         diagnostic=True,
         suggested_display_precision=1,
@@ -147,7 +208,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfTemperature.CELSIUS,
         "temperature",
         icon="mdi:thermometer",
-        block="refrigerant",
         suggested_display_precision=1,
     ),
     ReadRegister(
@@ -157,7 +217,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfTemperature.CELSIUS,
         "temperature",
         icon="mdi:thermometer-high",
-        block="refrigerant",
         enabled_default=False,
         diagnostic=True,
         suggested_display_precision=1,
@@ -173,7 +232,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
         None,
         icon="mdi:water-pump",
-        block="flow",
         enabled_default=False,
     ),
     ReadRegister(
@@ -183,7 +241,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfTemperature.CELSIUS,
         "temperature",
         icon="mdi:snowflake-thermometer",
-        block="cooling_circuit",
         enabled_default=False,
         diagnostic=True,
         suggested_display_precision=1,
@@ -195,7 +252,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         UnitOfTemperature.CELSIUS,
         "temperature",
         icon="mdi:sun-thermometer",
-        block="cooling_circuit",
         enabled_default=False,
         diagnostic=True,
         suggested_display_precision=1,
@@ -208,7 +264,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         "duration",
         state_class="total_increasing",
         icon="mdi:timer-cog",
-        block="compressor",
         diagnostic=True,
     ),
     ReadRegister(
@@ -218,7 +273,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         PERCENTAGE,
         None,
         icon="mdi:fan",
-        block="actuators",
         suggested_display_precision=0,
     ),
     ReadRegister(
@@ -228,7 +282,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         PERCENTAGE,
         None,
         icon="mdi:pump",
-        block="actuators",
         suggested_display_precision=0,
     ),
     ReadRegister(
@@ -239,7 +292,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         "temperature",
         state_class=None,
         icon="mdi:snowflake",
-        block="setpoints",
         enabled_default=False,
         suggested_display_precision=1,
     ),
@@ -251,7 +303,6 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         "temperature",
         state_class=None,
         icon="mdi:fire",
-        block="setpoints",
         enabled_default=False,
         suggested_display_precision=1,
     ),
@@ -263,15 +314,19 @@ READ_REGISTERS: Final[tuple[ReadRegister, ...]] = (
         "temperature",
         state_class=None,
         icon="mdi:water-thermometer",
-        block="setpoints",
         enabled_default=False,
         suggested_display_precision=1,
     ),
 )
 
-#: block holding the three alarm words; decoded in `alarms.py`
-ALARM_BLOCK: Final = "alarms"
+#: machine state, read (200) and written (7200). Also the register the config
+#: flow probes, because every controller in the family exposes it and reading it
+#: has no side effects.
+STATE_REGISTER: Final = 200
+
+#: first of the three alarm words; decoded in `alarms.py`
 ALARM_FIRST_REGISTER: Final = 950
+ALARM_REGISTERS: Final = (950, 951, 952)
 
 #: register 7214: bit 13 = defrost requested, bit 14 = defrost running
 DEFROST_REGISTER: Final = 7214
@@ -296,3 +351,24 @@ DELTA_T_MAX: Final = 8.0
 # a real flow reading exists, never from a sentinel.
 THERMAL_POWER_UNIT: Final = UnitOfPower.KILO_WATT
 WATER_HEAT_CAPACITY: Final = 4.186  # kJ/(kg·K)
+
+
+# Registers the coordinator needs that are not entity-backed: status bitmaps and
+# the command word read back. Listing them here rather than in the coordinator is
+# what lets the block planner see the full picture.
+STATUS_REGISTERS: Final = (
+    *ALARM_REGISTERS,
+    COMMAND_REGISTER,
+    DEFROST_REGISTER,
+    LEGIONELLA_REGISTER,
+)
+
+#: Every address a poll cycle must fetch.
+REQUIRED_ADDRESSES: Final = (
+    *(register.address for register in READ_REGISTERS),
+    *STATUS_REGISTERS,
+)
+
+#: The read plan, computed once at import. Seven transactions for twenty-four
+#: registers spread over 200 to 7216.
+READ_BLOCKS: Final[tuple[ReadBlock, ...]] = plan_blocks(REQUIRED_ADDRESSES)

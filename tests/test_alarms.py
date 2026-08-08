@@ -45,7 +45,9 @@ def test_single_alarm_decodes_with_code_and_description():
     assert active[0]["code"] == "E042"
     assert active[0]["register"] == 951
     assert active[0]["bit"] == 12
-    assert "hot water" in str(active[0]["description"]).lower()
+    # Descriptions use the industry term, DHW, which is what the manuals and the
+    # machine's own documentation say. User-facing text is translated separately.
+    assert "dhw" in str(active[0]["description"]).lower()
 
 
 def test_bit_15_is_decoded():

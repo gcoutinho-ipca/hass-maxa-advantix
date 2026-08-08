@@ -29,7 +29,7 @@ from custom_components.maxa_advantix.safe_write import (
     validate_state,
 )
 
-from .conftest import FakeModbusClient
+from .fake_client import FakeModbusClient
 
 
 @pytest.mark.parametrize("state", [0, 1, 2, 4, 5, 6])

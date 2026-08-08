@@ -93,15 +93,31 @@ directory and restart Home Assistant.
 
 ## Setup
 
-The dialog asks for four things: the gateway IP address, the TCP port (usually
-502), the Modbus id (1 from the factory, set by parameter H126 on machines wired
-in a network) and the controller model. The connection is probed before the entry
-is created, so a wrong address fails immediately instead of producing a device
+The dialog asks for the gateway IP address, the TCP port (usually 502), the Modbus
+id (1 from the factory, set by parameter H126 on machines wired in a network), the
+controller model, and whether to run read-only. The connection is probed before the
+entry is created, so a wrong address fails immediately instead of producing a device
 full of unavailable entities.
 
 The polling interval defaults to 30 s and can be changed under the integration's
-**Configure** button. A full sweep is about a dozen Modbus transactions; below
-15 s the bus has little idle time left and the machine's own panel gets sluggish.
+**Configure** button. A full sweep is seven Modbus transactions and roughly 350 ms
+of line time; below 15 s the bus has little idle time left and the machine's own
+panel gets sluggish.
+
+### Read-only mode
+
+Tick it and the integration creates sensors and nothing else. No `climate`, no
+`water_heater`, no switches, no buttons, and the coordinator refuses writes outright
+rather than merely not offering them.
+
+Two situations call for it. If the machine's original wall controller is still
+wired, a second controller with a different opinion about hot water produces
+behaviour that looks exactly like a hardware fault, so read-only lets you watch the
+machine for a week before taking anything over. And if all you want is the
+telemetry, this is the honest way to have it.
+
+It can be switched later under **Configure**. That reloads the entry, so entity
+history and unique ids survive.
 
 ## What you get
 
@@ -185,6 +201,33 @@ machine's own hot water setpoint slightly **above** the blueprint's stop value.
 The machine then never reaches its own cut-off, so your wide band governs instead
 of the controller's narrow internal differential, and the compressor stops short
 cycling. See [`docs/blueprints.md`](docs/blueprints.md).
+
+## Trying it without a heat pump
+
+There is a throwaway Home Assistant and a Modbus simulator in
+[`sandbox/`](sandbox):
+
+```bash
+cd sandbox && docker compose up -d      # then http://localhost:8123
+```
+
+Add the integration pointing at host `maxa-sim`, port 502. The simulator answers the
+same registers with the same scales, carries a crude thermal model so the derived
+sensors actually move, and can raise faults on request:
+
+```bash
+MAXA_SIM_ARGS="--read-only --fault E042 --flow-meter" \
+  docker compose up -d --force-recreate maxa-sim
+```
+
+That reproduces the fault this integration was written to catch, so you can see the
+water ΔT go past the tolerated maximum and **Flow restricted** turn on without
+owning a machine with a blocked strainer.
+
+It runs with writes refused by default, and it reproduces three controller
+behaviours that are impossible to discover without hardware: holding and input
+registers mirrored, writes silently ignored without their enable bit, and illegal
+state values rejected. See [`sandbox/README.md`](sandbox/README.md).
 
 ## Example dashboard
 

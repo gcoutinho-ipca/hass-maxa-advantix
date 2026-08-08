@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -27,10 +28,12 @@ from .const import (
     CONF_HOST,
     CONF_MODEL,
     CONF_PORT,
+    CONF_READ_ONLY,
     CONF_SCAN_INTERVAL,
     CONF_SLAVE,
     DEFAULT_MODEL,
     DEFAULT_PORT,
+    DEFAULT_READ_ONLY,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SLAVE,
     DOMAIN,
@@ -39,14 +42,12 @@ from .const import (
     MODELS,
 )
 from .modbus_client import ModbusError, ModbusTCPClient
-from .registers import BLOCKS
+from .registers import STATE_REGISTER
 
 _LOGGER = logging.getLogger(__name__)
 
-#: The state register is the probe used to confirm there is a machine on the
-#: other end: every controller in the family exposes it, and reading it has no
-#: side effects.
-_PROBE_ADDRESS = BLOCKS["state"][0]
+#: The state register confirms there is a machine on the other end.
+_PROBE_ADDRESS = STATE_REGISTER
 
 
 def _schema(defaults: dict[str, Any]) -> vol.Schema:
@@ -67,6 +68,13 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             ): SelectSelector(
                 SelectSelectorConfig(options=list(MODELS), mode=SelectSelectorMode.DROPDOWN)
             ),
+            # Offered here, and not only in the options, because the moment to
+            # decide is before the control entities exist. Someone whose wall
+            # controller is still wired should never be given a heating switch.
+            vol.Required(
+                CONF_READ_ONLY,
+                default=defaults.get(CONF_READ_ONLY, DEFAULT_READ_ONLY),
+            ): BooleanSelector(),
         }
     )
 
@@ -84,6 +92,7 @@ def _normalise(user_input: dict[str, Any]) -> dict[str, Any]:
         CONF_PORT: int(user_input[CONF_PORT]),
         CONF_SLAVE: int(user_input[CONF_SLAVE]),
         CONF_MODEL: user_input.get(CONF_MODEL, DEFAULT_MODEL),
+        CONF_READ_ONLY: bool(user_input.get(CONF_READ_ONLY, DEFAULT_READ_ONLY)),
     }
 
 
@@ -157,9 +166,12 @@ class MaxaConfigFlow(ConfigFlow, domain=DOMAIN):
 class MaxaOptionsFlow(OptionsFlow):
     """Tune the poll rate without reconfiguring the connection.
 
-    Worth being deliberate about: at 9600 baud a full sweep is a dozen
-    transactions, so intervals below ~15 s leave the bus with little idle time
-    and make the machine's own display sluggish.
+    Worth being deliberate about: at 9600 baud a full sweep is seven transactions
+    and roughly 350 ms of line time, so intervals below about 15 s leave the bus
+    with little idle time and make the machine's own display sluggish.
+
+    Read-only mode lives here too, so it can be turned on without touching the
+    connection. Changing either triggers a reload of the entry.
     """
 
     async def async_step_init(
@@ -167,13 +179,20 @@ class MaxaOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         if user_input is not None:
             return self.async_create_entry(
-                data={CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL])}
+                data={
+                    CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
+                    CONF_READ_ONLY: bool(user_input[CONF_READ_ONLY]),
+                }
             )
 
-        current = self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        entry = self.config_entry
+        interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        read_only = entry.options.get(
+            CONF_READ_ONLY, entry.data.get(CONF_READ_ONLY, DEFAULT_READ_ONLY)
+        )
         schema = vol.Schema(
             {
-                vol.Required(CONF_SCAN_INTERVAL, default=current): NumberSelector(
+                vol.Required(CONF_SCAN_INTERVAL, default=interval): NumberSelector(
                     NumberSelectorConfig(
                         min=MIN_SCAN_INTERVAL,
                         max=MAX_SCAN_INTERVAL,
@@ -181,7 +200,8 @@ class MaxaOptionsFlow(OptionsFlow):
                         unit_of_measurement="s",
                         mode=NumberSelectorMode.BOX,
                     )
-                )
+                ),
+                vol.Required(CONF_READ_ONLY, default=read_only): BooleanSelector(),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

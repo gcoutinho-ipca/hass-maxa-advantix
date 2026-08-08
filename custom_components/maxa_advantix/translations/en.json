@@ -8,11 +8,13 @@
           "host": "Gateway IP address",
           "port": "TCP port",
           "slave": "Modbus id (slave)",
-          "model": "Controller model"
+          "model": "Controller model",
+          "read_only": "Read-only mode"
         },
         "data_description": {
           "slave": "Factory default is 1. Set by parameter H126 on machines wired in a network.",
-          "model": "Used for the device card. Only the i-HWAK V4 register map is verified first-hand."
+          "model": "Used for the device card. Only the i-HWAK V4 register map is verified first-hand.",
+          "read_only": "Create only sensors, no controls. Choose this if the machine's own wall controller is still wired, or if you want the telemetry and nothing else. It can be changed later."
         }
       },
       "reconfigure": {
@@ -22,7 +24,8 @@
           "host": "Gateway IP address",
           "port": "TCP port",
           "slave": "Modbus id (slave)",
-          "model": "Controller model"
+          "model": "Controller model",
+          "read_only": "Read-only mode"
         }
       }
     },
@@ -41,10 +44,12 @@
       "init": {
         "title": "Options",
         "data": {
-          "scan_interval": "Polling interval"
+          "scan_interval": "Polling interval",
+          "read_only": "Read-only mode"
         },
         "data_description": {
-          "scan_interval": "A full sweep is about a dozen Modbus transactions. Below 15 s the bus has little idle time and the machine's own panel becomes sluggish."
+          "scan_interval": "A full sweep is seven Modbus transactions. Below 15 s the bus has little idle time and the machine's own panel becomes sluggish.",
+          "read_only": "Create only sensors, no controls. Choose this if the machine's own wall controller is still wired, or if you want the telemetry and nothing else. It can be changed later."
         }
       }
     }
@@ -74,43 +79,105 @@
           "heating_dhw": "Heating + hot water"
         }
       },
-      "water_inlet": { "name": "Water inlet" },
-      "water_outlet": { "name": "Water outlet" },
-      "dhw_tank": { "name": "Hot water tank" },
-      "high_pressure": { "name": "High pressure" },
-      "low_pressure": { "name": "Low pressure" },
-      "suction_temp": { "name": "Suction temperature" },
-      "outdoor": { "name": "Outdoor temperature" },
-      "discharge_temp": { "name": "Discharge temperature" },
-      "flow_rate": { "name": "Water flow" },
-      "evaporation_temp": { "name": "Evaporation temperature" },
-      "condensation_temp": { "name": "Condensation temperature" },
-      "compressor_hours": { "name": "Compressor hours" },
-      "fan": { "name": "Condenser fan" },
-      "circulator": { "name": "Circulator pump" },
-      "cooling_setpoint": { "name": "Cooling setpoint" },
-      "heating_setpoint": { "name": "Heating setpoint" },
-      "dhw_setpoint": { "name": "Hot water setpoint" },
-      "delta_t": { "name": "Water delta T" },
-      "thermal_power": { "name": "Thermal power" },
-      "active_alarms": { "name": "Active alarms" },
-      "mode_switches": { "name": "Mode switches" },
-      "last_mode_change": { "name": "Last mode change" },
-      "bus_error_rate": { "name": "Bus error rate" }
+      "water_inlet": {
+        "name": "Water inlet"
+      },
+      "water_outlet": {
+        "name": "Water outlet"
+      },
+      "dhw_tank": {
+        "name": "Hot water tank"
+      },
+      "high_pressure": {
+        "name": "High pressure"
+      },
+      "low_pressure": {
+        "name": "Low pressure"
+      },
+      "suction_temp": {
+        "name": "Suction temperature"
+      },
+      "outdoor": {
+        "name": "Outdoor temperature"
+      },
+      "discharge_temp": {
+        "name": "Discharge temperature"
+      },
+      "flow_rate": {
+        "name": "Water flow"
+      },
+      "evaporation_temp": {
+        "name": "Evaporation temperature"
+      },
+      "condensation_temp": {
+        "name": "Condensation temperature"
+      },
+      "compressor_hours": {
+        "name": "Compressor hours"
+      },
+      "fan": {
+        "name": "Condenser fan"
+      },
+      "circulator": {
+        "name": "Circulator pump"
+      },
+      "cooling_setpoint": {
+        "name": "Cooling setpoint"
+      },
+      "heating_setpoint": {
+        "name": "Heating setpoint"
+      },
+      "dhw_setpoint": {
+        "name": "Hot water setpoint"
+      },
+      "delta_t": {
+        "name": "Water delta T"
+      },
+      "thermal_power": {
+        "name": "Thermal power"
+      },
+      "active_alarms": {
+        "name": "Active alarms"
+      },
+      "mode_switches": {
+        "name": "Mode switches"
+      },
+      "last_mode_change": {
+        "name": "Last mode change"
+      },
+      "bus_error_rate": {
+        "name": "Bus error rate"
+      }
     },
     "binary_sensor": {
-      "problem": { "name": "Alarm" },
-      "flow_restricted": { "name": "Flow restricted" },
-      "defrost_running": { "name": "Defrosting" },
-      "defrost_requested": { "name": "Defrost requested" },
-      "legionella_running": { "name": "Anti-legionella running" },
-      "legionella_failed": { "name": "Anti-legionella failed" }
+      "problem": {
+        "name": "Alarm"
+      },
+      "flow_restricted": {
+        "name": "Flow restricted"
+      },
+      "defrost_running": {
+        "name": "Defrosting"
+      },
+      "defrost_requested": {
+        "name": "Defrost requested"
+      },
+      "legionella_running": {
+        "name": "Anti-legionella running"
+      },
+      "legionella_failed": {
+        "name": "Anti-legionella failed"
+      }
     },
     "climate": {
-      "conditioning": { "name": "Conditioning" }
+      "conditioning": {
+        "name": "Conditioning"
+      }
     },
     "water_heater": {
-      "dhw": { "name": "Hot water" }
+      "dhw": {
+        "name": "Hot water"
+      }
     },
     "select": {
       "machine_state": {
@@ -126,18 +193,34 @@
       }
     },
     "number": {
-      "cooling_setpoint": { "name": "Cooling setpoint" },
-      "heating_setpoint": { "name": "Heating setpoint" },
-      "dhw_setpoint": { "name": "Hot water setpoint" },
-      "dhw_heater_setpoint": { "name": "Hot water preheater setpoint" }
+      "cooling_setpoint": {
+        "name": "Cooling setpoint"
+      },
+      "heating_setpoint": {
+        "name": "Heating setpoint"
+      },
+      "dhw_setpoint": {
+        "name": "Hot water setpoint"
+      },
+      "dhw_heater_setpoint": {
+        "name": "Hot water preheater setpoint"
+      }
     },
     "switch": {
-      "ambient_call": { "name": "Conditioning call" },
-      "dhw_call": { "name": "Hot water call" }
+      "ambient_call": {
+        "name": "Conditioning call"
+      },
+      "dhw_call": {
+        "name": "Hot water call"
+      }
     },
     "button": {
-      "start_legionella": { "name": "Start anti-legionella" },
-      "release_control": { "name": "Release control" }
+      "start_legionella": {
+        "name": "Start anti-legionella"
+      },
+      "release_control": {
+        "name": "Release control"
+      }
     }
   },
   "services": {
@@ -206,6 +289,11 @@
           "description": "Only needed when more than one heat pump is configured."
         }
       }
+    }
+  },
+  "exceptions": {
+    "read_only": {
+      "message": "This heat pump is configured as read-only, so nothing was written. Turn read-only mode off in the integration's options to allow control."
     }
   }
 }

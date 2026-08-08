@@ -12,12 +12,22 @@ CONF_PORT: Final = "port"
 CONF_SLAVE: Final = "slave"
 CONF_SCAN_INTERVAL: Final = "scan_interval"
 CONF_MODEL: Final = "model"
+CONF_READ_ONLY: Final = "read_only"
 
 DEFAULT_PORT: Final = 502
 DEFAULT_SLAVE: Final = 1
 DEFAULT_SCAN_INTERVAL: Final = 30  # seconds
 MIN_SCAN_INTERVAL: Final = 10
 MAX_SCAN_INTERVAL: Final = 600
+
+# Read-only is off by default, because controlling the machine is the point of the
+# integration. It exists for the two situations where writing is the wrong answer:
+# a machine still commanded by its original wall controller, where a second
+# controller with a different opinion looks exactly like a hardware fault; and any
+# installation where you want the telemetry and nothing else. In that mode the
+# write platforms are never created, and the coordinator refuses writes outright,
+# so an entity left over from an earlier install cannot reach the bus either.
+DEFAULT_READ_ONLY: Final = False
 
 # Controller generations this integration has been reported to work with. Only
 # the V4 register/alarm map is verified first-hand; the others share the same

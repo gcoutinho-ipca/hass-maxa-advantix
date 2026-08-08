@@ -15,8 +15,16 @@ First public release.
   flow for changing the gateway without losing entity history, and an options
   flow for the polling interval.
 - Single `DataUpdateCoordinator` per config entry, so the integration is by
-  construction the only Modbus master on the bus. Reads are grouped into twelve
-  contiguous blocks instead of one transaction per register.
+  construction the only Modbus master on the bus.
+- **The read plan is computed, not hand-written.** Contiguous blocks are merged from
+  the declared register map with a tolerance tuned against a cost model of the bus:
+  at 9600 baud a transaction costs about 30 ms of fixed overhead against 2 ms per
+  register, so reading sixteen registers nobody wants is cheaper than one more round
+  trip. The result is seven transactions where the hand-written table used twelve,
+  roughly 350 ms of line time per poll instead of 410. The tuning is asserted in the
+  tests, so changing it for the worse fails the build, and a register added to the
+  map can no longer end up outside every block, which is a bug that reads as "that
+  sensor is always unavailable".
 - Sentinel filtering at the read layer. The manufacturer's "probe absent" values
   (32766, 32767, -32768, -32767, -32640, 65535) make an entity unavailable
   instead of being published as a measurement.
@@ -38,8 +46,25 @@ First public release.
 - Services `set_mode`, `set_dhw_setpoint`, `start_legionella`,
   `release_control`, and a read-only `read_register` for mapping controller
   generations this release does not cover.
+- **Read-only mode**, selectable at setup and changeable afterwards. Creates
+  sensors and nothing else: the control platforms are never set up, and the
+  coordinator refuses writes outright, so an entity left in the registry by an
+  earlier install cannot reach the bus either. Intended for machines whose original
+  wall controller is still in charge, and for installations that want the telemetry
+  and nothing more.
 - Config entry diagnostics with the last full reading, decoded alarms and bus
   health counters.
+- A **Modbus simulator** (`scripts/modbus_simulator.py`, standard library only) and
+  a **Docker sandbox** (`sandbox/`) with a throwaway Home Assistant. Nobody should
+  need to own the machine to work on the integration, or to test against a real heat
+  pump to find out that a change broke the register map. The simulator carries a
+  crude thermal model so the derived sensors move, raises fault codes on request, and
+  reproduces three controller behaviours that are impossible to discover without
+  hardware: holding and input registers mirrored, writes silently ignored without
+  their enable bit, and illegal state values rejected. It refuses writes by default.
+- `sandbox/install-from-github.sh` installs the published release the way HACS does,
+  so a file missing from the zip or a manifest version disagreeing with the tag
+  surfaces in testing rather than in someone's issue.
 - Blueprints for hot water scheduling with anti-cycling, solar priority,
   electric backup heater, hot water recirculation, and a restricted-flow alert.
 - Translations: English, Portuguese, Italian.

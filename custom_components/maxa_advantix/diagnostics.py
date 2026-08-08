@@ -31,7 +31,7 @@ from .const import (
     KEY_BUS,
     KEY_MODE_SWITCHES,
 )
-from .registers import BLOCKS
+from .registers import READ_BLOCKS
 
 TO_REDACT = {CONF_HOST, "last_error"}
 
@@ -52,7 +52,7 @@ async def async_get_config_entry_diagnostics(
             if coordinator.update_interval
             else None,
         },
-        "blocks_polled": {name: list(spec) for name, spec in BLOCKS.items()},
+        "blocks_polled": [[block.start, block.count] for block in READ_BLOCKS],
         "last_update_success": coordinator.last_update_success,
         "bus": reading.pop(KEY_BUS, {}),
         "active_alarms": reading.pop(KEY_ACTIVE_ALARMS, []),

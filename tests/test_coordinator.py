@@ -12,7 +12,7 @@ from custom_components.maxa_advantix.const import (
     KEY_MODE_SWITCHES,
 )
 
-from .conftest import FakeModbusClient
+from .fake_client import FakeModbusClient
 
 
 async def test_registers_are_read_in_blocks_not_one_by_one(

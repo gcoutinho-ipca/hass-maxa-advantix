@@ -1,16 +1,28 @@
 # Brand assets
 
-These files exist for one purpose: HACS requires an entry in
-[home-assistant/brands](https://github.com/home-assistant/brands) before an
-integration can be listed in the default store, and without it the integration
-shows a generic placeholder in the Home Assistant UI.
+The same three images live in two places, because HACS accepts either and they do
+different jobs.
 
 ```
-brands/custom_integrations/maxa_advantix/
+custom_components/maxa_advantix/brand/     <- shipped with the integration
+brands/custom_integrations/maxa_advantix/  <- for the pull request below
 ├── icon.png      256 x 256
 ├── icon@2x.png   512 x 512
 └── logo.png      512 x 512
 ```
+
+**The in-repository copy** is what HACS checks first. Its validation looks for
+`custom_components/<domain>/brand/icon.png` and only falls back to the brands
+repository when that is missing. Shipping it means the HACS check passes on day one
+rather than waiting in someone else's review queue, which is the difference between
+being submittable now and being submittable eventually.
+
+**The copy under `brands/`** is for a pull request to
+[home-assistant/brands](https://github.com/home-assistant/brands). That is what puts
+the icon in the Home Assistant UI itself, for every user, rather than only in the
+HACS listing. Worth doing, just not worth blocking on.
+
+Regenerate both with `python scripts/make_icon.py`.
 
 ## Submitting them
 
@@ -42,5 +54,3 @@ the gradient because these machines are reversible.
 Using a manufacturer's logo in a third-party integration is a trademark question
 nobody needs, and this project is not affiliated with MAXA. If MAXA ever wants
 their own mark used here, that is their call to make and their file to provide.
-
-Regenerated with `scripts/make_icon.py`.

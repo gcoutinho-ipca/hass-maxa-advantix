@@ -20,7 +20,18 @@ import pathlib
 from PIL import Image, ImageDraw
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
+
+# Two destinations, because HACS accepts either.
+#
+# `brands/` holds the copy for a pull request to home-assistant/brands, which is
+# what puts the icon in the Home Assistant UI for everyone.
+#
+# `custom_components/maxa_advantix/brand/` is HACS's in-repository fallback, checked
+# first and used when the brands repository has no entry yet. Shipping both means
+# the HACS validation passes on day one instead of waiting on someone else's review
+# queue.
 OUT = REPO / "brands" / "custom_integrations" / "maxa_advantix"
+IN_REPO = REPO / "custom_components" / "maxa_advantix" / "brand"
 
 SS = 4  # supersampling factor
 

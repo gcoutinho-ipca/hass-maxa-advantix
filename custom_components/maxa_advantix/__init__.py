@@ -10,6 +10,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -20,6 +21,7 @@ from .const import (
     CONF_SLAVE,
     DEFAULT_READ_ONLY,
     DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
 )
 from .coordinator import MaxaCoordinator
 from .modbus_client import ModbusTCPClient
@@ -43,6 +45,13 @@ PLATFORMS_WRITE: list[Platform] = [
 ]
 
 type MaxaConfigEntry = ConfigEntry[MaxaCoordinator]
+
+# There is no YAML configuration for this integration, and saying so explicitly
+# matters. `async_setup` exists below to register the services, and without this
+# schema Home Assistant would accept a `maxa_advantix:` block in
+# `configuration.yaml` without validating it, leaving the user waiting for an
+# effect that never arrives. With it, that mistake becomes a clear error.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 def _read_only(entry: MaxaConfigEntry) -> bool:

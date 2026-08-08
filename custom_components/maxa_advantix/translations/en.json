@@ -295,5 +295,15 @@
     "read_only": {
       "message": "This heat pump is configured as read-only, so nothing was written. Turn read-only mode off in the integration's options to allow control."
     }
+  },
+  "issues": {
+    "bus_errors": {
+      "title": "Modbus errors on the heat pump bus",
+      "description": "The Modbus error rate has reached {error_rate}%, above the {threshold}% threshold. This is the transport rather than the machine, which means readings may be silently wrong.\n\nThe usual cause is a second Modbus master on the same RS-485 segment. The wall controller supplied with these machines is one, and its data lines have to be disconnected. Two masters damage nothing, but they corrupt each other's data in ways that look like real readings.\n\nOther causes: a long cable run without a 120 ohm terminating resistor at each end, a shield grounded at both ends, or a polling interval too short for the bus."
+    },
+    "mode_thrashing": {
+      "title": "Heat pump is changing operating mode constantly",
+      "description": "The machine has changed operating mode {switches} times in the last hour, above the {threshold} threshold. A three-way diverter valve takes about a minute to travel, so at this rate it never finishes and the machine runs with the valve part-way open.\n\nThe usual cause is two controllers with different opinions: a leftover script, the generic Modbus integration still polling, or the machine's own wall controller still wired. Left alone this ends in short cycling and protection trips."
+    }
   }
 }

@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
+from collections import deque
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -27,7 +28,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from . import safe_write, states
+from . import health, safe_write, states
 from .alarms import count as count_alarms
 from .alarms import decode as decode_alarms
 from .const import (
@@ -40,6 +41,7 @@ from .const import (
     KEY_DELTA_T,
     KEY_MACHINE_STATE,
     KEY_MODE_SWITCHES,
+    KEY_SWITCHES_PER_HOUR,
     SENTINELS,
 )
 from .modbus_client import ModbusError, ModbusTCPClient
@@ -94,7 +96,11 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # statistics are Home Assistant's job, not ours.
         self._last_state: int | None = None
         self._mode_switches = 0
-        self._last_mode_change = None
+        self._last_mode_change: datetime | None = None
+        # Timestamps of recent mode changes, for the per-hour rate. A deque rather
+        # than a counter because the rate is what distinguishes a machine that
+        # alternates normally from one that is thrashing, and a total cannot.
+        self._switch_times: deque[datetime] = deque(maxlen=512)
         # Serialises writes against each other and against the read cycle.
         self._lock = asyncio.Lock()
         # Handle for the delayed post-write refresh, so it can be cancelled. A
@@ -139,8 +145,9 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.hass.async_create_task(self.async_request_refresh())
 
     async def async_shutdown(self) -> None:
-        """Cancel the delayed refresh before the coordinator goes away."""
+        """Cancel the delayed refresh and drop any repair issue we raised."""
         self._cancel_pending_refresh()
+        health.async_clear(self.hass, self.entry.entry_id)
         await super().async_shutdown()
 
     async def async_set_state(self, state: int) -> None:
@@ -206,9 +213,22 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_update_data(self) -> dict[str, Any]:
         try:
             async with self._lock:
-                return await self.hass.async_add_executor_job(self._read_all)
+                data = await self.hass.async_add_executor_job(self._read_all)
         except ModbusError as err:
             raise UpdateFailed(str(err)) from err
+
+        # Installation problems are checked here rather than in an entity, because
+        # they are about the setup and not about the machine, and because the user
+        # needs to be told rather than to go looking.
+        bus = data[KEY_BUS]
+        health.async_check(
+            self.hass,
+            self.entry.entry_id,
+            error_rate=float(bus.get("error_rate", 0.0)),
+            transactions=int(bus.get("transactions", 0)),
+            switches_per_hour=data[KEY_SWITCHES_PER_HOUR],
+        )
+        return data
 
     def _read_all(self) -> dict[str, Any]:
         """Blocking. Runs in the executor. Reads every block and builds the dict."""
@@ -264,16 +284,26 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else None
         )
 
-        # 7. mode switches: transitions of register 200
+        # 7. mode switches: transitions of register 200, as a total and a rate
         state = data.get(KEY_MACHINE_STATE)
         if state is not None:
             if self._last_state is not None and state != self._last_state:
+                now = dt_util.utcnow()
                 self._mode_switches += 1
-                self._last_mode_change = dt_util.utcnow()
+                self._last_mode_change = now
+                self._switch_times.append(now)
             self._last_state = state
         data[KEY_MODE_SWITCHES] = self._mode_switches
         data["last_mode_change"] = self._last_mode_change
+        data[KEY_SWITCHES_PER_HOUR] = self._switches_per_hour()
 
         # 8. bus health counters
         data[KEY_BUS] = self.client.stats()
         return data
+
+    def _switches_per_hour(self) -> int:
+        """Mode changes in the last hour, with older ones discarded."""
+        cutoff = dt_util.utcnow() - timedelta(hours=1)
+        while self._switch_times and self._switch_times[0] < cutoff:
+            self._switch_times.popleft()
+        return len(self._switch_times)

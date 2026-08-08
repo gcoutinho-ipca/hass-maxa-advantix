@@ -158,6 +158,23 @@ evaporation and condensation temperatures plus compressor hours.
 - **Bus error rate**, which catches a gateway that is starting to fail long before
   entities go unavailable.
 
+**It tells you when the installation is wrong**
+
+Two conditions raise a repair notification, in Settings, rather than a log line
+nobody reads. Both are installation problems rather than machine states, which is
+the distinction: you do not know to go looking for them, and the integration can
+recognise them.
+
+- **Modbus errors on the bus.** A sustained error rate means the transport, not the
+  machine, and the readings may be silently wrong. The usual cause is a second
+  Modbus master on the same segment.
+- **Constant mode changes.** More than a dozen an hour means the three-way valve
+  never finishes travelling. The usual cause is two controllers with different
+  opinions: a leftover script, the generic `modbus` integration still polling, or
+  the wall controller still wired.
+
+Both clear themselves when the condition goes away.
+
 **Alarms**
 
 The three alarm words are decoded into named fault codes. There is one aggregate

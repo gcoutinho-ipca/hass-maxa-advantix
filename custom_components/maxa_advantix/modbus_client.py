@@ -13,6 +13,15 @@ hard way with RTU-to-TCP gateways in front of this controller family:
    makes that serialization obvious instead of hiding it behind a connection
    pool that a large library would keep alive across calls.
 
+A connection is opened per transaction rather than kept alive, and that is a
+considered choice rather than laziness. A persistent socket would save the TCP
+handshake, which on a local gateway is around 1 ms; a poll cycle is seven
+transactions, so the saving is under 10 ms against roughly 350 ms of serial line
+time. Paying for that with a long-lived socket, and with the reconnect and
+half-open-connection handling it drags in, buys a 2% improvement in the wrong
+place. If a future gateway makes connection setup expensive, this is the paragraph
+to come back and disagree with.
+
 Only what is needed is implemented: function 3 (read holding registers),
 function 6 (write single register), the MBAP header and Modbus exception
 handling. No fragmentation, no function 16, because this controller accepts

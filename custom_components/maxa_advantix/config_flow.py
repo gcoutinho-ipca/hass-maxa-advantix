@@ -137,18 +137,34 @@ class MaxaConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Change the gateway address or Modbus id without losing entity history."""
+        """Change the gateway address or Modbus id without losing entity history.
+
+        The unique id is derived from the connection, because these controllers
+        expose no serial number to derive it from. That has a consequence worth
+        spelling out: moving the gateway to a new address legitimately changes the
+        unique id, so the usual `_abort_if_unique_id_mismatch` guard is wrong here.
+        It exists for device-provided ids, and using it would abort on exactly the
+        case this step is for.
+
+        Instead the new id is checked against the *other* entries, to catch pointing
+        two entries at the same machine, and then updated on this one. Entity unique
+        ids are built from the entry id, which does not change, so history survives.
+        """
         entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
         if user_input is not None:
             data = _normalise(user_input)
-            await self.async_set_unique_id(
-                f"{data[CONF_HOST]}:{data[CONF_PORT]}:{data[CONF_SLAVE]}"
-            )
-            self._abort_if_unique_id_mismatch(reason="wrong_device")
+            unique_id = f"{data[CONF_HOST]}:{data[CONF_PORT]}:{data[CONF_SLAVE]}"
+            if any(
+                other.entry_id != entry.entry_id and other.unique_id == unique_id
+                for other in self._async_current_entries(include_ignore=False)
+            ):
+                return self.async_abort(reason="already_configured")
             errors = await self._validate(data)
             if not errors:
-                return self.async_update_reload_and_abort(entry, data_updates=data)
+                return self.async_update_reload_and_abort(
+                    entry, data_updates=data, unique_id=unique_id
+                )
             user_input = data
 
         return self.async_show_form(

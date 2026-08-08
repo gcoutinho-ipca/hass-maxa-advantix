@@ -12,33 +12,40 @@ from custom_components.maxa_advantix.const import (
     CONF_HOST,
     CONF_MODEL,
     CONF_PORT,
+    CONF_READ_ONLY,
     CONF_SCAN_INTERVAL,
     CONF_SLAVE,
     DOMAIN,
 )
 from custom_components.maxa_advantix.modbus_client import ModbusError
 
+from .fake_client import FakeModbusClient
+
 USER_INPUT = {
     CONF_HOST: "192.168.1.50",
     CONF_PORT: 502,
     CONF_SLAVE: 1,
     CONF_MODEL: "i-HWAK V4",
+    CONF_READ_ONLY: False,
 }
 
 
 @pytest.fixture
-def probe_ok(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Make the connection probe succeed."""
+def probe_ok(monkeypatch: pytest.MonkeyPatch, fake_client: FakeModbusClient) -> None:
+    """Make the connection probe succeed, and the resulting setup work too.
 
-    class Client:
-        def __init__(self, *_args, **_kwargs) -> None:
-            pass
-
-        def read_holding(self, _address, _count=1):
-            return [6]
-
+    Both clients have to be replaced. The flow probes with the one imported into
+    `config_flow`, and then creating the entry makes Home Assistant load the
+    integration, which builds its own from `__init__`. Replacing only the first
+    leaves the second opening a real socket.
+    """
     monkeypatch.setattr(
-        "custom_components.maxa_advantix.config_flow.ModbusTCPClient", Client
+        "custom_components.maxa_advantix.config_flow.ModbusTCPClient",
+        lambda *args, **kwargs: fake_client,
+    )
+    monkeypatch.setattr(
+        "custom_components.maxa_advantix.ModbusTCPClient",
+        lambda *args, **kwargs: fake_client,
     )
 
 
@@ -56,6 +63,7 @@ def probe_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "custom_components.maxa_advantix.config_flow.ModbusTCPClient", Client
     )
+    monkeypatch.setattr("custom_components.maxa_advantix.ModbusTCPClient", Client)
 
 
 async def test_user_flow_creates_an_entry(hass: HomeAssistant, probe_ok: None) -> None:
@@ -103,11 +111,16 @@ async def test_recovering_after_a_failed_attempt(
             pass
 
         def read_holding(self, _address, _count=1):
-            return [0]
+            return [0] * _count
+
+        def stats(self):
+            return {"transactions": 1, "errors": 0, "timeouts": 0, "error_rate": 0.0,
+                    "last_error": None}
 
     monkeypatch.setattr(
         "custom_components.maxa_advantix.config_flow.ModbusTCPClient", Client
     )
+    monkeypatch.setattr("custom_components.maxa_advantix.ModbusTCPClient", Client)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], USER_INPUT
     )
@@ -160,6 +173,13 @@ async def test_options_flow_sets_the_scan_interval(
 async def test_reconfigure_updates_the_address(
     hass: HomeAssistant, probe_ok: None, loaded_entry: MockConfigEntry
 ) -> None:
+    """Moving the gateway is the main reason this step exists, so it must not abort.
+
+    Regression test. The unique id here is derived from the connection, because
+    these controllers expose no serial number, so changing the host legitimately
+    changes it. Guarding that with the usual device-id mismatch check aborted on
+    precisely the case the step is for.
+    """
     result = await loaded_entry.start_reconfigure_flow(hass)
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "reconfigure"
@@ -170,3 +190,26 @@ async def test_reconfigure_updates_the_address(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
     assert loaded_entry.data[CONF_HOST] == "192.168.1.51"
+    # The identity follows the connection, and the entry id does not change, so
+    # entity unique ids and history survive.
+    assert loaded_entry.unique_id == "192.168.1.51:502:1"
+
+
+async def test_reconfigure_refuses_to_point_at_an_already_configured_machine(
+    hass: HomeAssistant, probe_ok: None, loaded_entry: MockConfigEntry
+) -> None:
+    """Two entries pointing at the same machine would be two masters in one house."""
+    other = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="192.168.1.60:502:1",
+        data={**USER_INPUT, CONF_HOST: "192.168.1.60"},
+    )
+    other.add_to_hass(hass)
+
+    result = await loaded_entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**USER_INPUT, CONF_HOST: "192.168.1.60"}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert loaded_entry.data[CONF_HOST] == "192.168.1.50"

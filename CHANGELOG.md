@@ -52,6 +52,14 @@ First public release.
   earlier install cannot reach the bus either. Intended for machines whose original
   wall controller is still in charge, and for installations that want the telemetry
   and nothing more.
+- **Installation health checks**, raised as repair issues. A sustained Modbus error
+  rate and more than a dozen mode changes an hour both point at the setup rather
+  than at the machine, and both are conditions a user does not know to look for.
+  The notifications name the likely cause, which in both cases is usually a second
+  Modbus master or a second controller, and clear themselves when the condition
+  goes away. The mode switch sensor now carries the per-hour rate in its
+  attributes, since a total since startup cannot distinguish thrashing from
+  uptime.
 - Config entry diagnostics with the last full reading, decoded alarms and bus
   health counters.
 - A **Modbus simulator** (`scripts/modbus_simulator.py`, standard library only) and

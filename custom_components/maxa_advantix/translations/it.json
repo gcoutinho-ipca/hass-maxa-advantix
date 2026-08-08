@@ -295,5 +295,15 @@
     "read_only": {
       "message": "Questa pompa di calore è configurata in sola lettura, quindi non è stato scritto nulla. Disattivare la modalità sola lettura nelle opzioni dell'integrazione per consentire il controllo."
     }
+  },
+  "issues": {
+    "bus_errors": {
+      "title": "Errori Modbus sul bus della pompa di calore",
+      "description": "Il tasso di errore Modbus ha raggiunto il {error_rate}%, sopra la soglia del {threshold}%. Il problema è nel trasporto e non nella macchina: le letture possono essere sbagliate senza sembrarlo.\n\nLa causa più comune è un secondo master Modbus sullo stesso segmento RS-485. Il controllore a parete fornito con queste macchine è uno di questi e i suoi fili dati vanno scollegati. Due master non danneggiano nulla, ma corrompono i dati a vicenda in modo che sembrano letture reali.\n\nAltre cause: tratta lunga senza resistenza di terminazione da 120 ohm a ciascuna estremità, schermo collegato a massa da entrambi i lati, o intervallo di lettura troppo breve per il bus."
+    },
+    "mode_thrashing": {
+      "title": "La pompa di calore cambia modo continuamente",
+      "description": "La macchina ha cambiato modo di funzionamento {switches} volte nell'ultima ora, sopra la soglia di {threshold}. Una valvola deviatrice a tre vie impiega circa un minuto per completare la corsa: a questo ritmo non la termina mai e la macchina lavora con la valvola a metà.\n\nLa causa più comune sono due controllori con opinioni diverse: uno script dimenticato, l'integrazione Modbus generica ancora attiva, o il controllore a parete della macchina ancora collegato. Lasciato così, finisce in cicli brevi e scatti delle protezioni."
+    }
   }
 }

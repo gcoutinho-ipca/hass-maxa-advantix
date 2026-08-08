@@ -28,10 +28,12 @@ from .const import (
     KEY_DELTA_T,
     KEY_MACHINE_STATE,
     KEY_MODE_SWITCHES,
+    KEY_SWITCHES_PER_HOUR,
     MACHINE_STATES,
 )
 from .coordinator import MaxaCoordinator
 from .entity import MaxaEntity
+from .health import MODE_THRASHING_THRESHOLD
 from .registers import DELTA_T_MAX, DELTA_T_NOMINAL, READ_REGISTERS, ReadRegister
 
 
@@ -214,6 +216,19 @@ class MaxaModeSwitchSensor(MaxaEntity, SensorEntity):
     @property
     def native_value(self) -> int:
         return self.coordinator.data.get(KEY_MODE_SWITCHES, 0)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """The rate, which is what actually distinguishes normal from thrashing.
+
+        A total since startup grows forever and says nothing on its own. The
+        per-hour figure is the one worth putting on a dashboard, and the one the
+        installation health check acts on.
+        """
+        return {
+            "per_hour": self.coordinator.data.get(KEY_SWITCHES_PER_HOUR, 0),
+            "thrashing_threshold": MODE_THRASHING_THRESHOLD,
+        }
 
 
 class MaxaLastModeChangeSensor(MaxaEntity, SensorEntity):

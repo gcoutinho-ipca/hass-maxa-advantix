@@ -295,5 +295,15 @@
     "read_only": {
       "message": "Esta bomba de calor está configurada como apenas de leitura, por isso nada foi escrito. Desliga o modo apenas de leitura nas opções da integração para permitir o controlo."
     }
+  },
+  "issues": {
+    "bus_errors": {
+      "title": "Erros Modbus no barramento da bomba de calor",
+      "description": "A taxa de erro Modbus chegou a {error_rate}%, acima do limite de {threshold}%. O problema é do transporte e não da máquina, o que significa que as leituras podem estar erradas sem o parecerem.\n\nA causa habitual é um segundo master Modbus no mesmo segmento RS-485. O controlador de parede que vem com estas máquinas é um deles, e os seus fios de dados têm de ser desligados. Dois masters não danificam nada, mas corrompem os dados um do outro de forma que parece leituras verdadeiras.\n\nOutras causas: cabo longo sem resistência de terminação de 120 ohm em cada extremidade, blindagem ligada à terra nas duas pontas, ou intervalo de leitura demasiado curto para o barramento."
+    },
+    "mode_thrashing": {
+      "title": "A bomba de calor está a mudar de modo constantemente",
+      "description": "A máquina mudou de modo de funcionamento {switches} vezes na última hora, acima do limite de {threshold}. A válvula de três vias leva cerca de um minuto a completar o percurso, por isso a este ritmo nunca o termina e a máquina trabalha com a válvula a meio.\n\nA causa habitual são dois controladores com opiniões diferentes: um script esquecido, a integração Modbus genérica ainda a ler, ou o controlador de parede da própria máquina ainda ligado. Se ficar assim, acaba em ciclos curtos e em disparos das protecções."
+    }
   }
 }

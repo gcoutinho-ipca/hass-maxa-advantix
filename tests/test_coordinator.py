@@ -18,11 +18,19 @@ from .fake_client import FakeModbusClient
 async def test_registers_are_read_in_blocks_not_one_by_one(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, fake_client: FakeModbusClient
 ) -> None:
-    """Twelve transactions per sweep, not one per register. The bus is the budget."""
-    multi = [call for call in fake_client.read_calls if call[1] > 1]
-    assert multi, "no block reads happened at all"
-    assert len(fake_client.read_calls) <= 14
-    assert (400, 15) in fake_client.read_calls
+    """A handful of block reads per sweep, not one per register. The bus is the budget.
+
+    Deliberately asserted against the plan rather than against literal block
+    boundaries: the plan is computed, and a test that hard-codes its output turns
+    every tuning change into a test failure that says nothing useful.
+    """
+    from custom_components.maxa_advantix.registers import READ_BLOCKS
+
+    assert fake_client.read_calls == [
+        (block.start, block.count) for block in READ_BLOCKS
+    ]
+    assert len(fake_client.read_calls) < 10, "the plan should stay compact"
+    assert any(count > 1 for _, count in fake_client.read_calls), "no block reads at all"
 
 
 async def test_scaling_is_applied(

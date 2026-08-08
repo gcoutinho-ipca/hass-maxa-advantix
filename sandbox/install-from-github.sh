@@ -46,7 +46,13 @@ else
       "https://github.com/$REPO/releases/download/$REF/$DOMAIN.zip"; then
     echo "Using the release zip asset, the same file HACS installs."
     mkdir -p "$WORK/unpacked"
-    ( cd "$WORK/unpacked" && unzip -q "../$DOMAIN.zip" )
+    # Python rather than unzip: every machine that runs Home Assistant has one,
+    # and plenty of minimal systems do not have the other.
+    if command -v unzip >/dev/null 2>&1; then
+      ( cd "$WORK/unpacked" && unzip -q "../$DOMAIN.zip" )
+    else
+      python3 -m zipfile -e "$WORK/$DOMAIN.zip" "$WORK/unpacked"
+    fi
     SOURCE="$WORK/unpacked"
   else
     echo "No zip asset on that release; falling back to the source tarball."

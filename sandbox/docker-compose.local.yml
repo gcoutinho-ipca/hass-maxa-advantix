@@ -1,0 +1,15 @@
+# Development override: run the working tree instead of an installed release.
+#
+#     docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+#
+# Edit the integration, restart Home Assistant, see the change. That is the whole
+# loop.
+#
+# Kept as a separate file rather than as a commented-out line in the base compose,
+# because the two modes test different things and mixing them is how you spend an
+# afternoon debugging a release that was never actually being loaded. The bind mount
+# shadows anything install-from-github.sh has put in place.
+services:
+  homeassistant:
+    volumes:
+      - ../custom_components/maxa_advantix:/config/custom_components/maxa_advantix:ro

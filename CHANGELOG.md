@@ -4,6 +4,60 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Nothing here changes how the integration talks to a machine. The released zip
+contains `custom_components/` only, so the dashboard fix below was never
+distributed through HACS: it was wrong in the repository, which is where people
+copy it from.
+
+### Fixed
+
+- **The example dashboard referenced seven entities that do not exist**, including
+  the three most prominent cards on it: the delta T gauge, the tank reading and the
+  hot water setpoint. The suffixes had been written from the register keys, while
+  entity ids come from the translated entity names, and nothing checked across the
+  two. Nothing validates a Lovelace YAML either: Home Assistant renders an unknown
+  entity as "Entity not found" and carries on.
+
+### Added
+
+- `tests/test_dashboard.py` loads the integration, reads the entity registry and
+  checks every reference in the example against it, including those inside the Jinja
+  template of the alarm card, which a walk of the YAML structure would miss. It
+  compares against the registry rather than against a second list of names, so
+  renaming an entity stays allowed and shipping an example that no longer matches it
+  does not. It also refuses references to entities that are disabled by default,
+  since those render as empty cards.
+- `scripts/validate.sh` now runs `ruff check` and `ruff format --check`, which it had
+  always claimed to. That gap is why the two below went unnoticed.
+
+### Changed
+
+- **The lint job could not have passed.** `ruff` reported 92 findings and wanted 15
+  files reformatted, and nothing had ever run it. Nine functions gained docstrings,
+  eight were reworded to imperative mood, `int(round(x))` and a hand-rolled
+  `zip(xs, xs[1:])` were simplified, and two U+2212 MINUS SIGN characters that look
+  exactly like hyphens and break a grep for one were replaced.
+- Two rules are now off, each with its reasoning recorded in `pyproject.toml`:
+  `D102`/`D105`, because fifty-eight of the findings were Home Assistant property
+  overrides whose contract belongs to the base class and whose subject belongs to the
+  class docstring; and `RUF012`, because entity attributes like `_attr_hvac_modes`
+  are lists by the base class's own annotation, so `ClassVar` would contradict it.
+  `D100`, `D101` and `D103` stay enforced.
+- `ruff` is pinned to an exact version in the workflow and in `validate.sh`, and
+  bumped by hand, since Dependabot does not see a version inside a `run:` line.
+  Unpinned, a ruff release adding a rule turns the lint job red with no code change
+  behind it.
+- `THERMAL_POWER_UNIT` was an unused alias for `UnitOfPower.KILO_WATT`; removed along
+  with the import that existed only to feed it. `SetpointDef.diagnostic` set
+  `EntityCategory.CONFIG`, which is a different thing, and is now named
+  `config_category`.
+- The unused enable and command bits in `safe_write.py` stay, and now say why: both
+  registers are bit fields, a bit field is only safe to write when the whole layout is
+  known, and this layout came out of reverse engineering a protocol that is not
+  published anywhere.
+
 ## [1.0.0] - 2026-08-08
 
 First public release.

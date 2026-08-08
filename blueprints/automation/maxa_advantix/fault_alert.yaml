@@ -1,0 +1,126 @@
+blueprint:
+  name: "MAXA: fault and restricted-flow alert"
+  description: >-
+    Notifies you when the heat pump raises an alarm, or when the water ΔT stays
+    above the tolerated maximum long enough to be real.
+
+    The delay on the flow alert is not cosmetic. ΔT spikes briefly at every
+    compressor start and at every mode change; only a sustained value means a
+    restriction. Alerting on the instantaneous reading produces noise, and noise
+    trains you to ignore the one message that mattered.
+
+    Worth knowing why this alert exists at all: the machine's own flow switch is
+    documented as not being supervised during hot water production, precisely
+    when a restricted hot water branch shows itself. On some installations ΔT is
+    the only warning you will get before the high-temperature protection starts
+    tripping.
+  domain: automation
+  source_url: https://github.com/gcoutinho-ipca/hass-maxa-advantix/blob/main/blueprints/automation/maxa_advantix/fault_alert.yaml
+  author: gcoutinho <gcoutinho@gmail.com>
+  input:
+    alarm_sensor:
+      name: Alarm sensor
+      description: The integration's aggregate "Alarm" binary sensor.
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor
+            integration: maxa_advantix
+    active_alarms_sensor:
+      name: Active alarms sensor
+      description: >-
+        The integration's "Active alarms" sensor. Its state carries the fault
+        codes, and its attributes carry the descriptions, which is what goes into
+        the message.
+      selector:
+        entity:
+          filter:
+            domain: sensor
+            integration: maxa_advantix
+    flow_sensor:
+      name: Flow restricted sensor
+      description: The integration's "Flow restricted" binary sensor.
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor
+            integration: maxa_advantix
+    flow_delay:
+      name: Flow alert delay
+      description: How long the restriction must persist before you hear about it.
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 120
+          step: 1
+          unit_of_measurement: min
+    notify_action:
+      name: Notification action
+      description: >-
+        The notify action to call, for example `notify.mobile_app_phone` or
+        `notify.persistent_notification`.
+      default: notify.persistent_notification
+      selector:
+        text:
+
+mode: queued
+max: 5
+
+triggers:
+  - trigger: state
+    entity_id: !input alarm_sensor
+    from: "off"
+    to: "on"
+    id: alarm_raised
+  - trigger: state
+    entity_id: !input alarm_sensor
+    from: "on"
+    to: "off"
+    id: alarm_cleared
+  - trigger: state
+    entity_id: !input flow_sensor
+    to: "on"
+    for:
+      minutes: !input flow_delay
+    id: flow_restricted
+
+variables:
+  alarms_entity: !input active_alarms_sensor
+  flow_entity: !input flow_sensor
+  codes: "{{ state_attr(alarms_entity, 'alarms') | default([], true) | join(', ') }}"
+  delta_t: "{{ state_attr(flow_entity, 'delta_t') }}"
+  tolerated: "{{ state_attr(flow_entity, 'tolerated_maximum') }}"
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: alarm_raised
+        sequence:
+          - action: !input notify_action
+            data:
+              title: Heat pump alarm
+              message: >-
+                {{ codes if codes else 'An alarm bit is set but no code was
+                decoded. Please report the raw registers.' }}
+      - conditions:
+          - condition: trigger
+            id: alarm_cleared
+        sequence:
+          - action: !input notify_action
+            data:
+              title: Heat pump alarm cleared
+              message: No alarm bits are set any more.
+      - conditions:
+          - condition: trigger
+            id: flow_restricted
+        sequence:
+          - action: !input notify_action
+            data:
+              title: Heat pump water flow restricted
+              message: >-
+                Water ΔT has been {{ delta_t }} K for a while, above the
+                tolerated {{ tolerated }} K. Check the strainer on the water
+                inlet, and bleed the hot water branch. Left alone this ends in
+                high-temperature protection trips.

@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+.coverage
+htmlcov/
+*.zip
+
+# Manufacturer documentation is not redistributable — keep it out of the repo.
+*.pdf
+docs/manuals/

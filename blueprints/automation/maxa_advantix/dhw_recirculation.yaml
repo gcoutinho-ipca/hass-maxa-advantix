@@ -1,0 +1,125 @@
+blueprint:
+  name: "MAXA: hot water recirculation with a night pause"
+  description: >-
+    Runs a hot water recirculation pump so a tap delivers hot water immediately,
+    and pauses it overnight when nobody is drawing any.
+
+    The pause is the whole point. A recirculation loop kept running around the
+    clock is a small heater bleeding the cylinder into the pipework, and it shows
+    up as the heat pump starting at three in the morning for no reason anyone can
+    explain.
+
+    Independent of Modbus and of the machine's own clock, so it keeps working
+    while you are diagnosing the heat pump.
+  domain: automation
+  source_url: https://github.com/gcoutinho-ipca/hass-maxa-advantix/blob/main/blueprints/automation/maxa_advantix/dhw_recirculation.yaml
+  author: gcoutinho <gcoutinho@gmail.com>
+  input:
+    pump:
+      name: Recirculation pump
+      description: The switch, light or relay driving the recirculation pump.
+      selector:
+        entity:
+          filter:
+            - domain: switch
+            - domain: light
+            - domain: input_boolean
+    pause_start:
+      name: Night pause starts
+      default: "01:00:00"
+      selector:
+        time:
+    pause_end:
+      name: Night pause ends
+      default: "07:30:00"
+      selector:
+        time:
+    enable_switch:
+      name: Enable toggle
+      description: >-
+        Optional `input_boolean` master switch. When off, the pump is forced off.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain: input_boolean
+    tank_minimum:
+      name: Minimum tank temperature
+      icon: mdi:thermometer-alert
+      collapsed: true
+      input:
+        tank_temperature:
+          name: Tank temperature sensor
+          description: >-
+            Optional. When given, the pump stops below the threshold below,
+            since circulating a tank that is already cool just spreads the cold
+            around.
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                domain: sensor
+                device_class: temperature
+        minimum_temperature:
+          name: Stop below
+          default: 35
+          selector:
+            number:
+              min: 15
+              max: 55
+              step: 0.5
+              unit_of_measurement: "°C"
+
+mode: single
+max_exceeded: silent
+
+triggers:
+  - trigger: time_pattern
+    minutes: "/1"
+  - trigger: homeassistant
+    event: start
+
+variables:
+  pump: !input pump
+  pause_start: !input pause_start
+  pause_end: !input pause_end
+  enablers: !input enable_switch
+  tank_sensors: !input tank_temperature
+  minimum_temperature: !input minimum_temperature
+  enabled: "{{ enablers | count == 0 or enablers | select('is_state', 'on') | list | count > 0 }}"
+  # Overnight windows wrap around midnight, so a simple "between" test is wrong
+  # for a pause that starts at 01:00 and one that starts at 23:00 alike.
+  start_minutes: "{{ pause_start.split(':')[0] | int * 60 + pause_start.split(':')[1] | int }}"
+  end_minutes: "{{ pause_end.split(':')[0] | int * 60 + pause_end.split(':')[1] | int }}"
+  now_minutes: "{{ now().hour * 60 + now().minute }}"
+  in_pause: >-
+    {% if start_minutes <= end_minutes %}
+      {{ start_minutes <= now_minutes < end_minutes }}
+    {% else %}
+      {{ now_minutes >= start_minutes or now_minutes < end_minutes }}
+    {% endif %}
+  tank_value: >-
+    {% set values = tank_sensors | map('states') | map('float', -999) | list %}
+    {{ values | max if values else 999 }}
+  too_cold: "{{ tank_value != 999 and tank_value < minimum_temperature }}"
+  should_run: "{{ enabled and not in_pause and not too_cold }}"
+  running: "{{ is_state(pump, 'on') }}"
+
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ should_run and not running }}"
+        sequence:
+          - action: homeassistant.turn_on
+            target:
+              entity_id: !input pump
+      - conditions:
+          - condition: template
+            value_template: "{{ not should_run and running }}"
+        sequence:
+          - action: homeassistant.turn_off
+            target:
+              entity_id: !input pump

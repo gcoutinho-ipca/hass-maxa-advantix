@@ -1,0 +1,13 @@
+{
+  "domain": "maxa_advantix",
+  "name": "MAXA / Advantix Heat Pump",
+  "codeowners": ["@gcoutinho-ipca"],
+  "config_flow": true,
+  "documentation": "https://github.com/gcoutinho-ipca/hass-maxa-advantix",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/gcoutinho-ipca/hass-maxa-advantix/issues",
+  "loggers": ["custom_components.maxa_advantix"],
+  "requirements": [],
+  "version": "1.0.0"
+}

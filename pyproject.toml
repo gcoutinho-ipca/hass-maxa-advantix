@@ -1,0 +1,43 @@
+[project]
+name = "hass-maxa-advantix"
+version = "1.0.0"
+description = "Home Assistant integration for MAXA / Advantix heat pumps over Modbus"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "gcoutinho", email = "gcoutinho@gmail.com" }]
+
+[tool.ruff]
+# Home Assistant core uses 88. This project allows 100, because the register and
+# entity definitions read better as one line per definition than wrapped over
+# three, and those tables are the part people come here to read.
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "F",   # pyflakes
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "I",   # import sorting
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "SIM", # simplify
+    "C4",  # comprehensions
+    "RUF", # ruff-specific
+    "D",   # docstrings
+]
+ignore = [
+    "D203",  # incompatible with D211
+    "D213",  # incompatible with D212
+    "D107",  # __init__ docstring: the class docstring covers it
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D100", "D103"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

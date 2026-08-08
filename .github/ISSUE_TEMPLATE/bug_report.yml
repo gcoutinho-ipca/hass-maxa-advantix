@@ -1,0 +1,75 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        A diagnostics download is worth ten reports without one. You will find it
+        under Settings, Devices and services, MAXA, three-dot menu, Download
+        diagnostics. It contains the last full reading, the decoded alarms and the
+        bus counters, and nothing secret.
+
+  - type: input
+    id: controller
+    attributes:
+      label: Controller model and firmware
+      description: As shown on the machine's own panel.
+      placeholder: i-HWAK V4, firmware 1.9
+    validations:
+      required: true
+
+  - type: input
+    id: gateway
+    attributes:
+      label: Modbus gateway
+      description: Make and model, and the serial settings you configured.
+      placeholder: Waveshare RS485-to-ETH, 9600 8N1
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Home Assistant and integration version
+      placeholder: HA 2026.8.1, integration 1.0.0
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: single_master
+    attributes:
+      label: Bus ownership
+      description: >
+        Two Modbus masters on one RS-485 segment corrupt data in ways that look
+        like real readings. This is the single most common cause of strange
+        behaviour, so please confirm before reporting.
+      options:
+        - label: The wall controller's data lines are disconnected, or it is removed
+          required: true
+        - label: No other Modbus integration or script is polling this machine
+          required: true
+
+  - type: textarea
+    id: what_happens
+    attributes:
+      label: What happens
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+
+  - type: input
+    id: bus_error_rate
+    attributes:
+      label: Bus error rate
+      description: The value of the "Bus error rate" diagnostic sensor.
+      placeholder: 0.4 %
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: >
+        Set the log level to debug first, then reproduce. Configuration:
+        `logger: logs: custom_components.maxa_advantix: debug`
+      render: text

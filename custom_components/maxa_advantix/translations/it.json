@@ -1,0 +1,211 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Pompa di calore MAXA / Advantix",
+        "description": "Collegamento al gateway Modbus-TCP della pompa di calore. L'integrazione diventa l'unico master Modbus su quel bus: rimuovere o scollegare prima qualsiasi altro master (un controllore a parete, una seconda integrazione Modbus).",
+        "data": {
+          "host": "Indirizzo IP del gateway",
+          "port": "Porta TCP",
+          "slave": "ID Modbus (slave)",
+          "model": "Modello del controllore"
+        },
+        "data_description": {
+          "slave": "Il valore di fabbrica è 1. Impostato dal parametro H126 sulle macchine collegate in rete.",
+          "model": "Usato per la scheda del dispositivo. Solo la mappa registri i-HWAK V4 è verificata direttamente."
+        }
+      },
+      "reconfigure": {
+        "title": "Riconfigurare la connessione",
+        "description": "Modificare indirizzo del gateway, porta o ID Modbus senza perdere lo storico delle entità.",
+        "data": {
+          "host": "Indirizzo IP del gateway",
+          "port": "Porta TCP",
+          "slave": "ID Modbus (slave)",
+          "model": "Modello del controllore"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossibile leggere il registro di stato. Verificare indirizzo IP, porta TCP e ID Modbus.",
+      "unknown": "Errore inatteso. Consultare il log per i dettagli."
+    },
+    "abort": {
+      "already_configured": "Questa pompa di calore è già configurata.",
+      "wrong_device": "Quell'indirizzo risponde come una macchina diversa da quella in riconfigurazione.",
+      "reconfigure_successful": "Connessione aggiornata."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni",
+        "data": {
+          "scan_interval": "Intervallo di lettura"
+        },
+        "data_description": {
+          "scan_interval": "Una scansione completa è circa una dozzina di transazioni Modbus. Sotto i 15 s il bus resta senza tempo libero e il pannello della macchina diventa lento."
+        }
+      }
+    }
+  },
+  "selector": {
+    "machine_state": {
+      "options": {
+        "standby": "Standby",
+        "cooling": "Raffreddamento",
+        "heating": "Riscaldamento",
+        "dhw": "Solo sanitario",
+        "cooling_dhw": "Raffreddamento + sanitario",
+        "heating_dhw": "Riscaldamento + sanitario"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "machine_state": {
+        "name": "Stato macchina",
+        "state": {
+          "standby": "Standby",
+          "cooling": "Raffreddamento",
+          "heating": "Riscaldamento",
+          "dhw": "Solo sanitario",
+          "cooling_dhw": "Raffreddamento + sanitario",
+          "heating_dhw": "Riscaldamento + sanitario"
+        }
+      },
+      "water_inlet": { "name": "Ingresso acqua" },
+      "water_outlet": { "name": "Uscita acqua" },
+      "dhw_tank": { "name": "Accumulo sanitario" },
+      "high_pressure": { "name": "Alta pressione" },
+      "low_pressure": { "name": "Bassa pressione" },
+      "suction_temp": { "name": "Temperatura di aspirazione" },
+      "outdoor": { "name": "Temperatura esterna" },
+      "discharge_temp": { "name": "Temperatura di scarico" },
+      "flow_rate": { "name": "Portata acqua" },
+      "evaporation_temp": { "name": "Temperatura di evaporazione" },
+      "condensation_temp": { "name": "Temperatura di condensazione" },
+      "compressor_hours": { "name": "Ore compressore" },
+      "fan": { "name": "Ventilatore condensatore" },
+      "circulator": { "name": "Circolatore" },
+      "cooling_setpoint": { "name": "Setpoint raffreddamento" },
+      "heating_setpoint": { "name": "Setpoint riscaldamento" },
+      "dhw_setpoint": { "name": "Setpoint sanitario" },
+      "delta_t": { "name": "Delta T acqua" },
+      "thermal_power": { "name": "Potenza termica" },
+      "active_alarms": { "name": "Allarmi attivi" },
+      "mode_switches": { "name": "Commutazioni di modo" },
+      "last_mode_change": { "name": "Ultimo cambio di modo" },
+      "bus_error_rate": { "name": "Tasso di errore del bus" }
+    },
+    "binary_sensor": {
+      "problem": { "name": "Allarme" },
+      "flow_restricted": { "name": "Portata insufficiente" },
+      "defrost_running": { "name": "Sbrinamento in corso" },
+      "defrost_requested": { "name": "Sbrinamento richiesto" },
+      "legionella_running": { "name": "Anti-legionella in corso" },
+      "legionella_failed": { "name": "Anti-legionella fallito" }
+    },
+    "climate": {
+      "conditioning": { "name": "Climatizzazione" }
+    },
+    "water_heater": {
+      "dhw": { "name": "Acqua calda sanitaria" }
+    },
+    "select": {
+      "machine_state": {
+        "name": "Stato macchina",
+        "state": {
+          "standby": "Standby",
+          "cooling": "Raffreddamento",
+          "heating": "Riscaldamento",
+          "dhw": "Solo sanitario",
+          "cooling_dhw": "Raffreddamento + sanitario",
+          "heating_dhw": "Riscaldamento + sanitario"
+        }
+      }
+    },
+    "number": {
+      "cooling_setpoint": { "name": "Setpoint raffreddamento" },
+      "heating_setpoint": { "name": "Setpoint riscaldamento" },
+      "dhw_setpoint": { "name": "Setpoint sanitario" },
+      "dhw_heater_setpoint": { "name": "Setpoint preparatore sanitario" }
+    },
+    "switch": {
+      "ambient_call": { "name": "Richiesta climatizzazione" },
+      "dhw_call": { "name": "Richiesta sanitario" }
+    },
+    "button": {
+      "start_legionella": { "name": "Avvia anti-legionella" },
+      "release_control": { "name": "Rilascia il comando" }
+    }
+  },
+  "services": {
+    "set_mode": {
+      "name": "Imposta modo",
+      "description": "Scrive lo stato macchina, validato contro i valori che il controllore accetta.",
+      "fields": {
+        "mode": {
+          "name": "Modo",
+          "description": "Modo di funzionamento combinato. Scrivere entrambe le metà in una sola volta evita di passare per uno stato intermedio che la valvola a tre vie dovrebbe inseguire."
+        },
+        "config_entry_id": {
+          "name": "Pompa di calore",
+          "description": "Necessario solo con più di una pompa di calore configurata."
+        }
+      }
+    },
+    "set_dhw_setpoint": {
+      "name": "Imposta setpoint sanitario",
+      "description": "Scrive il setpoint dell'acqua calda sanitaria, entro il campo previsto dal costruttore.",
+      "fields": {
+        "temperature": {
+          "name": "Temperatura",
+          "description": "Temperatura desiderata dell'acqua calda sanitaria, 25-55 °C."
+        },
+        "config_entry_id": {
+          "name": "Pompa di calore",
+          "description": "Necessario solo con più di una pompa di calore configurata."
+        }
+      }
+    },
+    "start_legionella": {
+      "name": "Avvia anti-legionella",
+      "description": "Avvia il ciclo anti-legionella del controllore. Durante il ciclo la macchina sorveglia i propri limiti di temperatura.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Pompa di calore",
+          "description": "Necessario solo con più di una pompa di calore configurata."
+        }
+      }
+    },
+    "release_control": {
+      "name": "Rilascia il comando",
+      "description": "Azzera i registri di comando, stato e abilitazione: il controllore torna alle proprie impostazioni e al proprio pannello.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Pompa di calore",
+          "description": "Necessario solo con più di una pompa di calore configurata."
+        }
+      }
+    },
+    "read_register": {
+      "name": "Leggi registro",
+      "description": "Legge registri holding e restituisce i valori. Sola lettura, per mappare registri su generazioni di controllore non ancora coperte.",
+      "fields": {
+        "address": {
+          "name": "Indirizzo",
+          "description": "Numero del primo registro, come riportato nella tabella Modbus del costruttore."
+        },
+        "count": {
+          "name": "Quantità",
+          "description": "Quanti registri consecutivi leggere."
+        },
+        "config_entry_id": {
+          "name": "Pompa di calore",
+          "description": "Necessario solo con più di una pompa di calore configurata."
+        }
+      }
+    }
+  }
+}

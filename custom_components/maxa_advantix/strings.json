@@ -1,0 +1,211 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "MAXA / Advantix heat pump",
+        "description": "Connect to the heat pump's Modbus-TCP gateway. The integration becomes the single Modbus master on that bus, so remove or disconnect any other master (a wall controller, a second Modbus integration) first.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "TCP port",
+          "slave": "Modbus id (slave)",
+          "model": "Controller model"
+        },
+        "data_description": {
+          "slave": "Factory default is 1. Set by parameter H126 on machines wired in a network.",
+          "model": "Used for the device card. Only the i-HWAK V4 register map is verified first-hand."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure the connection",
+        "description": "Change the gateway address, port or Modbus id without losing entity history.",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "TCP port",
+          "slave": "Modbus id (slave)",
+          "model": "Controller model"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not read the state register. Check the IP address, the TCP port and the Modbus id.",
+      "unknown": "Unexpected error. See the log for details."
+    },
+    "abort": {
+      "already_configured": "This heat pump is already configured.",
+      "wrong_device": "That address answers as a different machine than the one being reconfigured.",
+      "reconfigure_successful": "Connection updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "scan_interval": "Polling interval"
+        },
+        "data_description": {
+          "scan_interval": "A full sweep is about a dozen Modbus transactions. Below 15 s the bus has little idle time and the machine's own panel becomes sluggish."
+        }
+      }
+    }
+  },
+  "selector": {
+    "machine_state": {
+      "options": {
+        "standby": "Standby",
+        "cooling": "Cooling",
+        "heating": "Heating",
+        "dhw": "Hot water only",
+        "cooling_dhw": "Cooling + hot water",
+        "heating_dhw": "Heating + hot water"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "machine_state": {
+        "name": "Machine state",
+        "state": {
+          "standby": "Standby",
+          "cooling": "Cooling",
+          "heating": "Heating",
+          "dhw": "Hot water only",
+          "cooling_dhw": "Cooling + hot water",
+          "heating_dhw": "Heating + hot water"
+        }
+      },
+      "water_inlet": { "name": "Water inlet" },
+      "water_outlet": { "name": "Water outlet" },
+      "dhw_tank": { "name": "Hot water tank" },
+      "high_pressure": { "name": "High pressure" },
+      "low_pressure": { "name": "Low pressure" },
+      "suction_temp": { "name": "Suction temperature" },
+      "outdoor": { "name": "Outdoor temperature" },
+      "discharge_temp": { "name": "Discharge temperature" },
+      "flow_rate": { "name": "Water flow" },
+      "evaporation_temp": { "name": "Evaporation temperature" },
+      "condensation_temp": { "name": "Condensation temperature" },
+      "compressor_hours": { "name": "Compressor hours" },
+      "fan": { "name": "Condenser fan" },
+      "circulator": { "name": "Circulator pump" },
+      "cooling_setpoint": { "name": "Cooling setpoint" },
+      "heating_setpoint": { "name": "Heating setpoint" },
+      "dhw_setpoint": { "name": "Hot water setpoint" },
+      "delta_t": { "name": "Water delta T" },
+      "thermal_power": { "name": "Thermal power" },
+      "active_alarms": { "name": "Active alarms" },
+      "mode_switches": { "name": "Mode switches" },
+      "last_mode_change": { "name": "Last mode change" },
+      "bus_error_rate": { "name": "Bus error rate" }
+    },
+    "binary_sensor": {
+      "problem": { "name": "Alarm" },
+      "flow_restricted": { "name": "Flow restricted" },
+      "defrost_running": { "name": "Defrosting" },
+      "defrost_requested": { "name": "Defrost requested" },
+      "legionella_running": { "name": "Anti-legionella running" },
+      "legionella_failed": { "name": "Anti-legionella failed" }
+    },
+    "climate": {
+      "conditioning": { "name": "Conditioning" }
+    },
+    "water_heater": {
+      "dhw": { "name": "Hot water" }
+    },
+    "select": {
+      "machine_state": {
+        "name": "Machine state",
+        "state": {
+          "standby": "Standby",
+          "cooling": "Cooling",
+          "heating": "Heating",
+          "dhw": "Hot water only",
+          "cooling_dhw": "Cooling + hot water",
+          "heating_dhw": "Heating + hot water"
+        }
+      }
+    },
+    "number": {
+      "cooling_setpoint": { "name": "Cooling setpoint" },
+      "heating_setpoint": { "name": "Heating setpoint" },
+      "dhw_setpoint": { "name": "Hot water setpoint" },
+      "dhw_heater_setpoint": { "name": "Hot water preheater setpoint" }
+    },
+    "switch": {
+      "ambient_call": { "name": "Conditioning call" },
+      "dhw_call": { "name": "Hot water call" }
+    },
+    "button": {
+      "start_legionella": { "name": "Start anti-legionella" },
+      "release_control": { "name": "Release control" }
+    }
+  },
+  "services": {
+    "set_mode": {
+      "name": "Set mode",
+      "description": "Writes the machine state, validated against the values the controller accepts.",
+      "fields": {
+        "mode": {
+          "name": "Mode",
+          "description": "Combined operating mode. Setting both halves in one write avoids passing through an intermediate state the three-way valve would have to chase."
+        },
+        "config_entry_id": {
+          "name": "Heat pump",
+          "description": "Only needed when more than one heat pump is configured."
+        }
+      }
+    },
+    "set_dhw_setpoint": {
+      "name": "Set hot water setpoint",
+      "description": "Writes the domestic hot water setpoint, within the manufacturer's range.",
+      "fields": {
+        "temperature": {
+          "name": "Temperature",
+          "description": "Target hot water temperature, 25-55 °C."
+        },
+        "config_entry_id": {
+          "name": "Heat pump",
+          "description": "Only needed when more than one heat pump is configured."
+        }
+      }
+    },
+    "start_legionella": {
+      "name": "Start anti-legionella",
+      "description": "Starts the controller's own anti-legionella cycle. The machine supervises its own temperature limits during the cycle.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Heat pump",
+          "description": "Only needed when more than one heat pump is configured."
+        }
+      }
+    },
+    "release_control": {
+      "name": "Release control",
+      "description": "Clears the command, state and enable registers so the controller returns to its own settings and panel.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Heat pump",
+          "description": "Only needed when more than one heat pump is configured."
+        }
+      }
+    },
+    "read_register": {
+      "name": "Read register",
+      "description": "Reads holding registers and returns the values. Read-only, for mapping registers on controller generations this integration does not cover yet.",
+      "fields": {
+        "address": {
+          "name": "Address",
+          "description": "First register number, as printed in the manufacturer's Modbus table."
+        },
+        "count": {
+          "name": "Count",
+          "description": "How many consecutive registers to read."
+        },
+        "config_entry_id": {
+          "name": "Heat pump",
+          "description": "Only needed when more than one heat pump is configured."
+        }
+      }
+    }
+  }
+}

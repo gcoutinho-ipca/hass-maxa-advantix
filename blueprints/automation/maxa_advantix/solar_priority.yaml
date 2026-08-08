@@ -1,0 +1,106 @@
+blueprint:
+  name: "MAXA: solar priority flag for hot water"
+  description: >-
+    Raises a flag during a morning window when the day's solar forecast is good
+    enough, so the heat pump does not spend electricity heating water that the
+    sun will heat for free a few hours later.
+
+    This blueprint only sets a flag: an `input_boolean` you create once. Feed
+    that same helper into the "Block conditions" input of the hot water
+    hysteresis blueprint, and into the electric backup blueprint. Keeping the
+    decision and the action separate means you can see *why* hot water is paused,
+    and one flag can hold back several consumers at once.
+
+    Works with any forecast sensor that reports the day's expected production in
+    kWh: Forecast.Solar, Solcast, or your own template sensor. If you have solar
+    thermal panels rather than PV, a collector temperature sensor with a suitable
+    threshold works just as well.
+  domain: automation
+  source_url: https://github.com/gcoutinho-ipca/hass-maxa-advantix/blob/main/blueprints/automation/maxa_advantix/solar_priority.yaml
+  author: gcoutinho <gcoutinho@gmail.com>
+  input:
+    flag:
+      name: Solar block flag
+      description: >-
+        An `input_boolean` helper. Create it under Settings, Devices and
+        services, Helpers. This automation turns it on and off; nothing else
+        should write to it.
+      selector:
+        entity:
+          filter:
+            domain: input_boolean
+    forecast_sensor:
+      name: Forecast sensor
+      description: Expected solar production for today, in kWh.
+      selector:
+        entity:
+          filter:
+            domain: sensor
+    threshold:
+      name: Forecast threshold
+      description: >-
+        Hold hot water back only when the forecast is at least this good. Set it
+        from experience: the figure that has actually been enough to heat your
+        tank by mid-afternoon.
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 0.5
+          unit_of_measurement: kWh
+    window_start:
+      name: Window start
+      description: Do not hold hot water back before this time.
+      default: "08:00:00"
+      selector:
+        time:
+    window_end:
+      name: Window end
+      description: >-
+        Release the flag at this time, whatever the forecast said. After this the
+        normal hysteresis takes over, so a day that failed to deliver still ends
+        with hot water.
+      default: "11:00:00"
+      selector:
+        time:
+
+mode: single
+
+triggers:
+  - trigger: time_pattern
+    minutes: "/5"
+  - trigger: state
+    entity_id: !input forecast_sensor
+  - trigger: homeassistant
+    event: start
+
+variables:
+  forecast_sensor: !input forecast_sensor
+  threshold: !input threshold
+  window_start: !input window_start
+  window_end: !input window_end
+  forecast: "{{ states(forecast_sensor) | float(0) }}"
+  # A forecast sensor that is unavailable must not block anything: no data means
+  # fall back to normal behaviour, not to optimism about the weather.
+  usable: "{{ states(forecast_sensor) not in ['unknown', 'unavailable', 'none'] }}"
+  in_window: >-
+    {{ today_at(window_start) <= now() < today_at(window_end) }}
+  should_block: "{{ usable and in_window and forecast >= threshold }}"
+
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ should_block }}"
+        sequence:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: !input flag
+      - conditions:
+          - condition: template
+            value_template: "{{ not should_block }}"
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: !input flag

@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""Generate the brand assets for home-assistant/brands.
+
+The design is deliberately not derived from the manufacturer's visual identity: a
+rounded square with a cold-to-warm gradient, because these machines are
+reversible, and a three-blade fan, because that is the universal shorthand for an
+outdoor unit.
+
+Renders at 4x and downsamples, which is the simplest way to get decent
+anti-aliasing with nothing but Pillow.
+
+    python scripts/make_icon.py
+"""
+
+from __future__ import annotations
+
+import math
+import pathlib
+
+from PIL import Image, ImageDraw
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
+OUT = REPO / "brands" / "custom_integrations" / "maxa_advantix"
+
+SS = 4  # supersampling factor
+
+COLD = (31, 111, 235)  # blue: cooling
+HOT = (249, 115, 22)  # orange: heating
+
+
+def gradient(size: int) -> Image.Image:
+    """Diagonal gradient from cold to warm."""
+    image = Image.new("RGB", (size, size))
+    pixels = image.load()
+    for y in range(size):
+        for x in range(size):
+            t = (x + y) / (2 * (size - 1))
+            pixels[x, y] = tuple(
+                round(COLD[i] + (HOT[i] - COLD[i]) * t) for i in range(3)
+            )
+    return image
+
+
+def rounded_mask(size: int, radius_fraction: float = 0.22) -> Image.Image:
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        [0, 0, size - 1, size - 1], radius=int(size * radius_fraction), fill=255
+    )
+    return mask
+
+
+def blade(centre: float, r0: float, r1: float, theta0: float) -> list[tuple[float, float]]:
+    """One blade: a polygon between two spirals, narrowing towards the tip."""
+    steps = 48
+    twist = 0.85  # radians of twist between root and tip
+    leading: list[tuple[float, float]] = []
+    trailing: list[tuple[float, float]] = []
+    for step in range(steps + 1):
+        f = step / steps
+        r = r0 + (r1 - r0) * f
+        theta = theta0 + twist * f
+        # widest in the middle of the blade, closing at both ends
+        width = 0.52 * math.sin(math.pi * (0.15 + 0.85 * f)) * (1 - 0.35 * f)
+        for offset, edge in ((-width, leading), (width, trailing)):
+            edge.append(
+                (centre + r * math.cos(theta + offset), centre + r * math.sin(theta + offset))
+            )
+    return leading + trailing[::-1]
+
+
+def build(size: int) -> Image.Image:
+    big = size * SS
+    background = gradient(big)
+    icon = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    icon.paste(background, (0, 0), rounded_mask(big))
+
+    draw = ImageDraw.Draw(icon)
+    centre = big / 2
+    for index in range(3):
+        theta0 = index * 2 * math.pi / 3
+        draw.polygon(
+            blade(centre, big * 0.115, big * 0.415, theta0),
+            fill=(255, 255, 255, 245),
+        )
+    # Centre hub, so the three blades read as a fan and not as a windmill.
+    hub = big * 0.085
+    draw.ellipse(
+        [centre - hub, centre - hub, centre + hub, centre + hub],
+        fill=(255, 255, 255, 255),
+    )
+
+    return icon.resize((size, size), Image.LANCZOS)
+
+
+def main() -> None:
+    OUT.mkdir(parents=True, exist_ok=True)
+    icon512 = build(512)
+    icon512.save(OUT / "icon@2x.png")
+    build(256).save(OUT / "icon.png")
+    # brands accepts a logo identical to the icon when there is no separate one.
+    icon512.save(OUT / "logo.png")
+    for name in ("icon.png", "icon@2x.png", "logo.png"):
+        path = OUT / name
+        with Image.open(path) as opened:
+            print(f"{name}: {opened.size[0]}x{opened.size[1]} {opened.mode} "
+                  f"{path.stat().st_size} bytes")
+
+
+if __name__ == "__main__":
+    main()

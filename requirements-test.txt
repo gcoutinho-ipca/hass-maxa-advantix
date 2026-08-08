@@ -1,0 +1,4 @@
+# Test dependencies. `pytest-homeassistant-custom-component` pulls in Home
+# Assistant itself plus the fixtures needed to load a custom integration, so it
+# is the only pin that really matters here.
+pytest-homeassistant-custom-component==0.13.*

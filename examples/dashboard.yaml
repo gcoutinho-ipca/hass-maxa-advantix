@@ -1,0 +1,141 @@
+# Example Lovelace view for the MAXA / Advantix integration.
+#
+# Paste this into a dashboard's raw configuration editor (three-dot menu, Edit
+# dashboard, three-dot menu, Raw configuration editor) and adjust the entity ids:
+# yours are built from the device name you gave the machine, so
+# `sensor.maxa_water_outlet` below might be `sensor.i_hwak_v4_192_168_1_50_water_outlet`
+# on your system. The quickest way to fix them all is to open the device page and
+# copy the ids from there.
+#
+# The layout follows the order in which these things actually get looked at:
+# controls first, then the two numbers that tell you whether the machine is
+# healthy, then the detail, then alarms.
+
+views:
+  - title: Heat pump
+    path: heat-pump
+    icon: mdi:heat-pump
+    type: sections
+    max_columns: 3
+    sections:
+      # ── Controls ────────────────────────────────────────────────────────────
+      - type: grid
+        cards:
+          - type: heading
+            heading: Control
+            heading_style: title
+          - type: thermostat
+            entity: climate.maxa_conditioning
+            features:
+              - type: climate-hvac-modes
+                hvac_modes:
+                  - "off"
+                  - heat
+                  - cool
+          - type: tile
+            entity: water_heater.maxa_hot_water
+            features:
+              - type: target-temperature
+          - type: entities
+            entities:
+              - entity: sensor.maxa_machine_state
+              - entity: sensor.maxa_dhw_tank
+                name: Tank
+              - entity: number.maxa_dhw_setpoint
+                name: Hot water setpoint
+
+      # ── Health: the two numbers that matter ─────────────────────────────────
+      - type: grid
+        cards:
+          - type: heading
+            heading: Health
+            heading_style: title
+          # ΔT is the single most informative number on this machine. Nominal is
+          # around 5 K; sustained values above 8 K mean a flow restriction, so the
+          # gauge is banded accordingly rather than on a pretty scale.
+          - type: gauge
+            entity: sensor.maxa_delta_t
+            name: Water delta T
+            min: 0
+            max: 20
+            needle: true
+            severity:
+              green: 0
+              yellow: 8
+              red: 12
+          - type: tile
+            entity: binary_sensor.maxa_flow_restricted
+            name: Flow
+          - type: tile
+            entity: sensor.maxa_mode_switches
+            name: Mode switches since restart
+          - type: tile
+            entity: sensor.maxa_bus_error_rate
+            name: Modbus error rate
+          - type: history-graph
+            hours_to_show: 12
+            entities:
+              - entity: sensor.maxa_water_inlet
+              - entity: sensor.maxa_water_outlet
+              - entity: sensor.maxa_dhw_tank
+
+      # ── Detail ──────────────────────────────────────────────────────────────
+      - type: grid
+        cards:
+          - type: heading
+            heading: Detail
+            heading_style: title
+          - type: entities
+            entities:
+              - entity: sensor.maxa_outdoor
+              - entity: sensor.maxa_high_pressure
+              - entity: sensor.maxa_low_pressure
+              - entity: sensor.maxa_fan
+              - entity: sensor.maxa_circulator
+              - type: divider
+              - entity: binary_sensor.maxa_defrosting
+              - entity: binary_sensor.maxa_anti_legionella_running
+              - entity: binary_sensor.maxa_anti_legionella_failed
+          - type: entities
+            title: Advanced
+            entities:
+              - entity: select.maxa_machine_state
+                name: Raw state
+              - entity: switch.maxa_conditioning_call
+              - entity: switch.maxa_hot_water_call
+              - entity: button.maxa_start_anti_legionella
+              - entity: button.maxa_release_control
+
+      # ── Alarms ──────────────────────────────────────────────────────────────
+      - type: grid
+        cards:
+          - type: heading
+            heading: Alarms
+            heading_style: title
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: binary_sensor.maxa_alarm
+                state: "on"
+            card:
+              type: markdown
+              # The `alarms` attribute is already a list of "code description"
+              # strings, so there is nothing to decode here.
+              content: >-
+                ## Active alarms
+
+                {% for line in state_attr('sensor.maxa_active_alarms', 'alarms') %}
+                - **{{ line }}**
+                {% endfor %}
+
+                Raw registers: {{ state_attr('sensor.maxa_active_alarms', 'registers') }}
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: binary_sensor.maxa_alarm
+                state: "off"
+            card:
+              type: markdown
+              content: No active alarms.
+          - type: tile
+            entity: sensor.maxa_compressor_hours

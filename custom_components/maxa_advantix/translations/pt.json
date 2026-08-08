@@ -1,0 +1,211 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Bomba de calor MAXA / Advantix",
+        "description": "Ligação ao gateway Modbus-TCP da bomba de calor. A integração passa a ser o único master Modbus desse barramento, por isso remove ou desliga qualquer outro master (um controlador de parede, uma segunda integração Modbus) antes de continuar.",
+        "data": {
+          "host": "Endereço IP do gateway",
+          "port": "Porta TCP",
+          "slave": "ID Modbus (slave)",
+          "model": "Modelo do controlador"
+        },
+        "data_description": {
+          "slave": "O valor de fábrica é 1. Definido pelo parâmetro H126 em máquinas ligadas em rede.",
+          "model": "Usado no cartão do dispositivo. Só o mapa de registos do i-HWAK V4 está verificado em primeira mão."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurar a ligação",
+        "description": "Alterar o endereço do gateway, a porta ou o ID Modbus sem perder o histórico das entidades.",
+        "data": {
+          "host": "Endereço IP do gateway",
+          "port": "Porta TCP",
+          "slave": "ID Modbus (slave)",
+          "model": "Modelo do controlador"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Não foi possível ler o registo de estado. Verifica o endereço IP, a porta TCP e o ID Modbus.",
+      "unknown": "Erro inesperado. Consulta o registo de eventos para detalhes."
+    },
+    "abort": {
+      "already_configured": "Esta bomba de calor já está configurada.",
+      "wrong_device": "Esse endereço responde como uma máquina diferente da que está a ser reconfigurada.",
+      "reconfigure_successful": "Ligação actualizada."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opções",
+        "data": {
+          "scan_interval": "Intervalo de leitura"
+        },
+        "data_description": {
+          "scan_interval": "Uma varredura completa são cerca de doze transacções Modbus. Abaixo de 15 s o barramento fica sem tempo livre e o painel da própria máquina fica lento."
+        }
+      }
+    }
+  },
+  "selector": {
+    "machine_state": {
+      "options": {
+        "standby": "Standby",
+        "cooling": "Arrefecimento",
+        "heating": "Aquecimento",
+        "dhw": "Só água quente",
+        "cooling_dhw": "Arrefecimento + água quente",
+        "heating_dhw": "Aquecimento + água quente"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "machine_state": {
+        "name": "Estado da máquina",
+        "state": {
+          "standby": "Standby",
+          "cooling": "Arrefecimento",
+          "heating": "Aquecimento",
+          "dhw": "Só água quente",
+          "cooling_dhw": "Arrefecimento + água quente",
+          "heating_dhw": "Aquecimento + água quente"
+        }
+      },
+      "water_inlet": { "name": "Entrada de água" },
+      "water_outlet": { "name": "Saída de água" },
+      "dhw_tank": { "name": "Depósito de água quente" },
+      "high_pressure": { "name": "Alta pressão" },
+      "low_pressure": { "name": "Baixa pressão" },
+      "suction_temp": { "name": "Temperatura de aspiração" },
+      "outdoor": { "name": "Temperatura exterior" },
+      "discharge_temp": { "name": "Temperatura de descarga" },
+      "flow_rate": { "name": "Caudal de água" },
+      "evaporation_temp": { "name": "Temperatura de evaporação" },
+      "condensation_temp": { "name": "Temperatura de condensação" },
+      "compressor_hours": { "name": "Horas de compressor" },
+      "fan": { "name": "Ventilador do condensador" },
+      "circulator": { "name": "Bomba circuladora" },
+      "cooling_setpoint": { "name": "Setpoint de frio" },
+      "heating_setpoint": { "name": "Setpoint de quente" },
+      "dhw_setpoint": { "name": "Setpoint de água quente" },
+      "delta_t": { "name": "Delta T da água" },
+      "thermal_power": { "name": "Potência térmica" },
+      "active_alarms": { "name": "Alarmes activos" },
+      "mode_switches": { "name": "Comutações de modo" },
+      "last_mode_change": { "name": "Última mudança de modo" },
+      "bus_error_rate": { "name": "Taxa de erro do barramento" }
+    },
+    "binary_sensor": {
+      "problem": { "name": "Alarme" },
+      "flow_restricted": { "name": "Caudal restringido" },
+      "defrost_running": { "name": "Em descongelação" },
+      "defrost_requested": { "name": "Descongelação pedida" },
+      "legionella_running": { "name": "Anti-legionela em curso" },
+      "legionella_failed": { "name": "Anti-legionela falhou" }
+    },
+    "climate": {
+      "conditioning": { "name": "Climatização" }
+    },
+    "water_heater": {
+      "dhw": { "name": "Água quente" }
+    },
+    "select": {
+      "machine_state": {
+        "name": "Estado da máquina",
+        "state": {
+          "standby": "Standby",
+          "cooling": "Arrefecimento",
+          "heating": "Aquecimento",
+          "dhw": "Só água quente",
+          "cooling_dhw": "Arrefecimento + água quente",
+          "heating_dhw": "Aquecimento + água quente"
+        }
+      }
+    },
+    "number": {
+      "cooling_setpoint": { "name": "Setpoint de frio" },
+      "heating_setpoint": { "name": "Setpoint de quente" },
+      "dhw_setpoint": { "name": "Setpoint de água quente" },
+      "dhw_heater_setpoint": { "name": "Setpoint do preparador de água quente" }
+    },
+    "switch": {
+      "ambient_call": { "name": "Chamada de climatização" },
+      "dhw_call": { "name": "Chamada de água quente" }
+    },
+    "button": {
+      "start_legionella": { "name": "Arrancar anti-legionela" },
+      "release_control": { "name": "Libertar o comando" }
+    }
+  },
+  "services": {
+    "set_mode": {
+      "name": "Definir modo",
+      "description": "Escreve o estado da máquina, validado contra os valores que o controlador aceita.",
+      "fields": {
+        "mode": {
+          "name": "Modo",
+          "description": "Modo de funcionamento combinado. Escrever as duas metades de uma só vez evita passar por um estado intermédio que a válvula de três vias teria de perseguir."
+        },
+        "config_entry_id": {
+          "name": "Bomba de calor",
+          "description": "Só é necessário quando há mais do que uma bomba de calor configurada."
+        }
+      }
+    },
+    "set_dhw_setpoint": {
+      "name": "Definir setpoint de água quente",
+      "description": "Escreve o setpoint de água quente sanitária, dentro da gama do fabricante.",
+      "fields": {
+        "temperature": {
+          "name": "Temperatura",
+          "description": "Temperatura pretendida da água quente, 25-55 °C."
+        },
+        "config_entry_id": {
+          "name": "Bomba de calor",
+          "description": "Só é necessário quando há mais do que uma bomba de calor configurada."
+        }
+      }
+    },
+    "start_legionella": {
+      "name": "Arrancar anti-legionela",
+      "description": "Arranca o ciclo anti-legionela do próprio controlador. A máquina vigia os seus limites de temperatura durante o ciclo.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Bomba de calor",
+          "description": "Só é necessário quando há mais do que uma bomba de calor configurada."
+        }
+      }
+    },
+    "release_control": {
+      "name": "Libertar o comando",
+      "description": "Limpa os registos de comando, estado e habilitação, devolvendo o controlador às suas próprias definições e ao seu painel.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Bomba de calor",
+          "description": "Só é necessário quando há mais do que uma bomba de calor configurada."
+        }
+      }
+    },
+    "read_register": {
+      "name": "Ler registo",
+      "description": "Lê registos holding e devolve os valores. Só leitura, para mapear registos em gerações de controlador que a integração ainda não cobre.",
+      "fields": {
+        "address": {
+          "name": "Endereço",
+          "description": "Número do primeiro registo, tal como aparece na tabela Modbus do fabricante."
+        },
+        "count": {
+          "name": "Quantidade",
+          "description": "Quantos registos consecutivos ler."
+        },
+        "config_entry_id": {
+          "name": "Bomba de calor",
+          "description": "Só é necessário quando há mais do que uma bomba de calor configurada."
+        }
+      }
+    }
+  }
+}

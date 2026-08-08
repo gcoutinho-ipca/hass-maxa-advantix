@@ -1,0 +1,29 @@
+# Actions are pinned to commit SHAs for supply-chain reasons, which means they do
+# not update on their own. Dependabot is what keeps that from turning into a pile
+# of two-year-old actions: it opens a PR with the new SHA and the tag it
+# corresponds to, and the pin stays a pin.
+#
+# The cooldown is the other half of the same argument. Pinning protects against a
+# tag being repointed; it does nothing about a freshly published malicious version,
+# which is adopted on day one by a bot that updates the moment something appears.
+# Waiting a week means a compromised release has usually been yanked before this
+# repository ever sees a PR for it.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps"

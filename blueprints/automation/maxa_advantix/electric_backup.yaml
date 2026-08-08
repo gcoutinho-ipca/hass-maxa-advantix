@@ -1,0 +1,134 @@
+blueprint:
+  name: "MAXA: electric backup heater for hot water"
+  description: >-
+    Drives an immersion heater (a smart plug or relay on the cylinder's electric
+    element) as a last resort behind the heat pump.
+
+    The cost ladder this implements, cheapest first: free solar, then the heat
+    pump, and only then the element. So the element is held back whenever the
+    solar flag is up, and it uses a *narrow* band, unlike the heat pump's wide
+    one: the element exists to stop the tank going cold, not to heat it to
+    comfort temperature at four times the cost.
+
+    Two safety behaviours are deliberate. If the tank probe stops reporting, the
+    element is switched off rather than left on: an unsupervised resistive load
+    on a cylinder is the one thing worth being pessimistic about. And when the
+    scenario is set to off, the element is actively turned off rather than merely
+    left alone.
+  domain: automation
+  source_url: https://github.com/gcoutinho-ipca/hass-maxa-advantix/blob/main/blueprints/automation/maxa_advantix/electric_backup.yaml
+  author: gcoutinho <gcoutinho@gmail.com>
+  input:
+    heater_switch:
+      name: Element switch
+      description: The switch controlling the immersion heater.
+      selector:
+        entity:
+          filter:
+            - domain: switch
+            - domain: input_boolean
+    tank_temperature:
+      name: Tank temperature sensor
+      selector:
+        entity:
+          filter:
+            domain: sensor
+            device_class: temperature
+    turn_on_below:
+      name: Turn on below
+      description: >-
+        Keep this well under the heat pump's own start threshold, so the pump
+        always gets first refusal.
+      default: 35
+      selector:
+        number:
+          min: 15
+          max: 55
+          step: 0.5
+          unit_of_measurement: "°C"
+    turn_off_at:
+      name: Turn off at
+      description: Just enough for a shower, not a full tank.
+      default: 39
+      selector:
+        number:
+          min: 20
+          max: 60
+          step: 0.5
+          unit_of_measurement: "°C"
+    enable_switch:
+      name: Enable toggle
+      description: >-
+        Optional `input_boolean` acting as the master switch for this scenario.
+        When it is off, the element is forced off. Leave empty to have the
+        scenario always enabled.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain: input_boolean
+    block_entities:
+      name: Block conditions
+      description: >-
+        Any of these being on forces the element off, typically the solar
+        priority flag, or a tariff sensor for peak hours.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: input_boolean
+            - domain: binary_sensor
+            - domain: schedule
+
+mode: single
+max_exceeded: silent
+
+triggers:
+  - trigger: state
+    entity_id: !input tank_temperature
+  - trigger: time_pattern
+    minutes: "/2"
+
+variables:
+  heater: !input heater_switch
+  tank: !input tank_temperature
+  turn_on_below: !input turn_on_below
+  turn_off_at: !input turn_off_at
+  enablers: !input enable_switch
+  blocks: !input block_entities
+  tank_value: "{{ states(tank) | float(-1) }}"
+  enabled: "{{ enablers | count == 0 or enablers | select('is_state', 'on') | list | count > 0 }}"
+  blocked: "{{ blocks | select('is_state', 'on') | list | count > 0 }}"
+  element_on: "{{ is_state(heater, 'on') }}"
+
+actions:
+  - choose:
+      # Forced off: scenario disabled, blocked, or the probe went silent.
+      - conditions:
+          - condition: template
+            value_template: "{{ (not enabled or blocked or tank_value < 0) and element_on }}"
+        sequence:
+          - action: homeassistant.turn_off
+            target:
+              entity_id: !input heater_switch
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ enabled and not blocked and tank_value >= 0
+                 and tank_value < turn_on_below and not element_on }}
+        sequence:
+          - action: homeassistant.turn_on
+            target:
+              entity_id: !input heater_switch
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ enabled and not blocked and tank_value >= turn_off_at and element_on }}
+        sequence:
+          - action: homeassistant.turn_off
+            target:
+              entity_id: !input heater_switch
+    # Between the two thresholds nothing happens on purpose: that gap is the
+    # hysteresis, and acting inside it is what causes relay chatter.

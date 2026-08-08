@@ -1,0 +1,65 @@
+name: Register map for another controller
+description: Share what you found on a controller generation this integration does not cover
+labels: [register-map, help wanted]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        This is the most useful contribution there is. Only the i-HWAK V4 map is
+        verified first-hand, and the alarm bitmap of the V2/V3 family is known to
+        differ, so a report tied to a specific controller and firmware is worth far
+        more than a generic table.
+
+
+        Use the read-only service, which goes through the same coordinator and so
+        does not create a second master on the bus:
+
+
+        ```yaml
+
+        action: maxa_advantix.read_register
+
+        data:
+          address: 400
+          count: 15
+
+        response_variable: result
+
+        ```
+
+  - type: input
+    id: controller
+    attributes:
+      label: Controller model and firmware
+      placeholder: i-HWAK V2+, firmware 1.4
+    validations:
+      required: true
+
+  - type: textarea
+    id: findings
+    attributes:
+      label: Registers and what they hold
+      description: >
+        Address, quantity, scale, and how you confirmed it. "Matches the panel
+        reading" is confirmation; "the manual says so" is a starting point.
+      placeholder: |
+        401 = outlet water, scale 0.1, matches the panel to 0.1 K
+        7205 = DHW setpoint, scale 0.1, changes when I set it on the panel
+    validations:
+      required: true
+
+  - type: textarea
+    id: alarms
+    attributes:
+      label: Alarm bits, if you managed to trigger any
+      description: >
+        Which bit was set in which register, and which code the panel displayed at
+        the same moment. That pairing is what makes an alarm map trustworthy.
+
+  - type: textarea
+    id: differences
+    attributes:
+      label: Anything that behaved differently from the documentation here
+      description: >
+        Enable-bit sequence, write delays, holding versus input register
+        mirroring, values the machine refused.

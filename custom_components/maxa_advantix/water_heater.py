@@ -37,6 +37,7 @@ async def async_setup_entry(
     entry: MaxaConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Set up the single water_heater entity for domestic hot water."""
     async_add_entities([MaxaWaterHeater(entry.runtime_data)])
 
 

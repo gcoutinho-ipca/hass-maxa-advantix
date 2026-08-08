@@ -26,16 +26,12 @@ async def test_registers_are_read_in_blocks_not_one_by_one(
     """
     from custom_components.maxa_advantix.registers import READ_BLOCKS
 
-    assert fake_client.read_calls == [
-        (block.start, block.count) for block in READ_BLOCKS
-    ]
+    assert fake_client.read_calls == [(block.start, block.count) for block in READ_BLOCKS]
     assert len(fake_client.read_calls) < 10, "the plan should stay compact"
     assert any(count > 1 for _, count in fake_client.read_calls), "no block reads at all"
 
 
-async def test_scaling_is_applied(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry
-) -> None:
+async def test_scaling_is_applied(hass: HomeAssistant, loaded_entry: MockConfigEntry) -> None:
     coordinator = loaded_entry.runtime_data
     assert coordinator.data["water_inlet"] == 40.0  # raw 400, scale 0.1
     assert coordinator.data["water_outlet"] == 45.5

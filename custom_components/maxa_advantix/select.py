@@ -28,6 +28,7 @@ async def async_setup_entry(
     entry: MaxaConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Set up the raw machine-state select."""
     async_add_entities([MaxaStateSelect(entry.runtime_data)])
 
 

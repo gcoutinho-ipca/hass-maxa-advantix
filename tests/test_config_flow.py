@@ -60,22 +60,16 @@ def probe_fails(monkeypatch: pytest.MonkeyPatch) -> None:
         def read_holding(self, _address, _count=1):
             raise ModbusError("timeout")
 
-    monkeypatch.setattr(
-        "custom_components.maxa_advantix.config_flow.ModbusTCPClient", Client
-    )
+    monkeypatch.setattr("custom_components.maxa_advantix.config_flow.ModbusTCPClient", Client)
     monkeypatch.setattr("custom_components.maxa_advantix.ModbusTCPClient", Client)
 
 
 async def test_user_flow_creates_an_entry(hass: HomeAssistant, probe_ok: None) -> None:
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
 
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], USER_INPUT
-    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], USER_INPUT)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"] == USER_INPUT
     assert "192.168.1.50" in result["title"]
@@ -85,12 +79,8 @@ async def test_unreachable_gateway_shows_an_error_and_keeps_the_form(
     hass: HomeAssistant, probe_fails: None
 ) -> None:
     """The user gets to correct the address instead of getting a broken entry."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], USER_INPUT
-    )
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], USER_INPUT)
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "cannot_connect"}
 
@@ -98,12 +88,8 @@ async def test_unreachable_gateway_shows_an_error_and_keeps_the_form(
 async def test_recovering_after_a_failed_attempt(
     hass: HomeAssistant, probe_fails: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], USER_INPUT
-    )
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], USER_INPUT)
     assert result["errors"]
 
     class Client:
@@ -114,16 +100,17 @@ async def test_recovering_after_a_failed_attempt(
             return [0] * _count
 
         def stats(self):
-            return {"transactions": 1, "errors": 0, "timeouts": 0, "error_rate": 0.0,
-                    "last_error": None}
+            return {
+                "transactions": 1,
+                "errors": 0,
+                "timeouts": 0,
+                "error_rate": 0.0,
+                "last_error": None,
+            }
 
-    monkeypatch.setattr(
-        "custom_components.maxa_advantix.config_flow.ModbusTCPClient", Client
-    )
+    monkeypatch.setattr("custom_components.maxa_advantix.config_flow.ModbusTCPClient", Client)
     monkeypatch.setattr("custom_components.maxa_advantix.ModbusTCPClient", Client)
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], USER_INPUT
-    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], USER_INPUT)
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
@@ -131,12 +118,8 @@ async def test_the_same_machine_cannot_be_added_twice(
     hass: HomeAssistant, probe_ok: None, config_entry: MockConfigEntry
 ) -> None:
     config_entry.add_to_hass(hass)
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], USER_INPUT
-    )
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], USER_INPUT)
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
 
@@ -146,9 +129,7 @@ async def test_a_second_machine_on_another_slave_id_is_allowed(
 ) -> None:
     """These controllers support a network of machines behind one gateway."""
     config_entry.add_to_hass(hass)
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {**USER_INPUT, CONF_SLAVE: 2}
     )

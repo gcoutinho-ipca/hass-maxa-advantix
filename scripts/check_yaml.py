@@ -80,9 +80,7 @@ def main() -> int:
             continue
 
         declared = declared_inputs(document["blueprint"])
-        referenced = referenced_inputs(
-            {k: v for k, v in document.items() if k != "blueprint"}
-        )
+        referenced = referenced_inputs({k: v for k, v in document.items() if k != "blueprint"})
         missing = referenced - declared
         unused = declared - referenced
         if missing:

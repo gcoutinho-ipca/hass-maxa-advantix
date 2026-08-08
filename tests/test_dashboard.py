@@ -39,7 +39,7 @@ REFERENCE = re.compile(
 
 @pytest.fixture
 def dashboard_text() -> str:
-    """The example, or a failure saying it is missing.
+    """Return the example, or fail saying it is missing.
 
     Not a skip. A skipped test reads like a passing one in CI output, and the file
     being absent from the test image is the failure mode this fixture exists to

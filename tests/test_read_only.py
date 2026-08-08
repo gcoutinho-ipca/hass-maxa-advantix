@@ -48,7 +48,7 @@ READ_PLATFORMS = {Platform.BINARY_SENSOR, Platform.SENSOR}
 
 @pytest.fixture
 def read_only_entry() -> MockConfigEntry:
-    """A config entry set up for telemetry only."""
+    """Return a config entry set up for telemetry only."""
     return MockConfigEntry(
         domain=DOMAIN,
         title="i-HWAK V4 (192.168.1.50)",
@@ -70,7 +70,7 @@ async def loaded_read_only(
     fake_client: FakeModbusClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """A loaded entry in read-only mode."""
+    """Load an entry in read-only mode."""
     import custom_components.maxa_advantix as integration
 
     monkeypatch.setattr(integration, "ModbusTCPClient", lambda **kwargs: fake_client)
@@ -90,9 +90,7 @@ async def test_it_loads(hass: HomeAssistant, loaded_read_only: MockConfigEntry) 
     assert loaded_read_only.runtime_data.read_only is True
 
 
-async def test_sensors_still_work(
-    hass: HomeAssistant, loaded_read_only: MockConfigEntry
-) -> None:
+async def test_sensors_still_work(hass: HomeAssistant, loaded_read_only: MockConfigEntry) -> None:
     """Telemetry is the whole point of the mode, so it had better be complete."""
     coordinator = loaded_read_only.runtime_data
     assert coordinator.data["water_outlet"] == 45.5
@@ -152,9 +150,7 @@ async def test_write_services_are_refused(
 ) -> None:
     """Services are registered globally, so they must respect the entry's mode."""
     with pytest.raises(ServiceValidationError):
-        await hass.services.async_call(
-            DOMAIN, "set_mode", {"mode": "cooling"}, blocking=True
-        )
+        await hass.services.async_call(DOMAIN, "set_mode", {"mode": "cooling"}, blocking=True)
     assert fake_client.writes == []
 
 
@@ -189,7 +185,7 @@ async def test_turning_read_only_off_brings_the_controls_back(
         entry.domain
         for entry in er.async_entries_for_config_entry(registry, loaded_read_only.entry_id)
     }
-    assert WRITE_PLATFORMS <= domains
+    assert domains >= WRITE_PLATFORMS
 
 
 async def test_turning_read_only_on_removes_the_controls(

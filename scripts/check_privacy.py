@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import pathlib
 import re
-import subprocess  # noqa: S404 - only used to ask git which files it tracks
+import subprocess
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -74,7 +74,7 @@ SKIP_PATHS = {"scripts/check_privacy.py"}
 
 def tracked_files() -> list[pathlib.Path]:
     """Ask git for the files that are actually published."""
-    output = subprocess.run(  # noqa: S603 - fixed argument list, no shell
+    output = subprocess.run(
         ["git", "-C", str(REPO), "ls-files", "-z"],
         capture_output=True,
         check=True,

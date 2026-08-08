@@ -14,6 +14,7 @@
 #
 #   privacy    no unexpected email addresses, private addresses or real hostnames
 #   yaml       every YAML parses; every blueprint !input resolves
+#   ruff       lint and formatting, the same two commands the lint job runs
 #   hassfest   Home Assistant's own integration validator
 #   hacs       the HACS validation action, against the published repository
 #   tests      the full suite inside the official Home Assistant image
@@ -46,6 +47,22 @@ if python3 scripts/check_yaml.py > /tmp/maxa-yaml.log 2>&1; then
   pass "$(tail -1 /tmp/maxa-yaml.log)"
 else
   fail "yaml"; tail -20 /tmp/maxa-yaml.log
+fi
+
+# Run in the official ruff image rather than from a local install, for the same
+# reason the other validators run in containers: the version is then the same one
+# everywhere, and nobody needs ruff on their machine to check their own change.
+# Cache disabled because the working tree is mounted read-only. The version is
+# pinned to the one `.github/workflows/validate.yml` installs, so a pass here is
+# a pass there; bump both together.
+bold "ruff (lint and format, as the CI runs them)"
+if docker run --rm -v "$HERE:/io:ro" -w /io ghcr.io/astral-sh/ruff:0.16.2 \
+     check --no-cache custom_components tests scripts > /tmp/maxa-ruff.log 2>&1 \
+   && docker run --rm -v "$HERE:/io:ro" -w /io ghcr.io/astral-sh/ruff:0.16.2 \
+     format --no-cache --check custom_components tests scripts >> /tmp/maxa-ruff.log 2>&1; then
+  pass "$(grep -E 'All checks passed|already formatted' /tmp/maxa-ruff.log | tr '\n' ' ')"
+else
+  fail "ruff"; tail -25 /tmp/maxa-ruff.log
 fi
 
 if [ "$QUICK" != "quick" ]; then

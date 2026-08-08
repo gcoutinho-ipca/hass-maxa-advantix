@@ -119,9 +119,7 @@ class MaxaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         install cannot get past this point.
         """
         if self.read_only:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN, translation_key="read_only"
-            )
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="read_only")
         async with self._lock:
             await self.hass.async_add_executor_job(func, self.client, *args)
         # Immediate refresh (state and calls appear quickly) plus a delayed one

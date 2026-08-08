@@ -21,7 +21,6 @@ from typing import Final
 
 from homeassistant.const import (
     PERCENTAGE,
-    UnitOfPower,
     UnitOfPressure,
     UnitOfTemperature,
     UnitOfTime,
@@ -341,7 +340,7 @@ LEGIONELLA_BIT_FAILED: Final = 6
 #: register 7202 read back: which remote calls the controller currently sees
 COMMAND_REGISTER: Final = 7202
 
-# Derived, not a register: water ΔT = outlet − inlet. The manufacturer's design
+# Derived, not a register: water ΔT = outlet - inlet. The manufacturer's design
 # figure is 5 K with 8 K as the tolerated maximum; sustained values above that
 # mean a flow restriction, which is exactly the fault that started this project.
 DELTA_T_NOMINAL: Final = 5.0
@@ -349,7 +348,6 @@ DELTA_T_MAX: Final = 8.0
 
 # Derived thermal power, kW = flow(l/min) / 60 * 4.186 * ΔT. Only computed when
 # a real flow reading exists, never from a sentinel.
-THERMAL_POWER_UNIT: Final = UnitOfPower.KILO_WATT
 WATER_HEAT_CAPACITY: Final = 4.186  # kJ/(kg·K)
 
 

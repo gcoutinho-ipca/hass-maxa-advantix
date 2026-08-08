@@ -60,6 +60,7 @@ async def async_setup_entry(
     entry: MaxaConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Set up the single climate entity for the space-conditioning side."""
     async_add_entities([MaxaClimate(entry.runtime_data)])
 
 

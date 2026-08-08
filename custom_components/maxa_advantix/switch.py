@@ -31,6 +31,7 @@ async def async_setup_entry(
     entry: MaxaConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Set up the two remote-call switches, ambient and hot water."""
     coordinator = entry.runtime_data
     async_add_entities(
         [
@@ -45,9 +46,7 @@ class MaxaCallSwitch(MaxaEntity, SwitchEntity):
 
     _attr_entity_category = EntityCategory.CONFIG
 
-    def __init__(
-        self, coordinator: MaxaCoordinator, key: str, bit: int, icon: str
-    ) -> None:
+    def __init__(self, coordinator: MaxaCoordinator, key: str, bit: int, icon: str) -> None:
         super().__init__(coordinator, key)
         self._bit = bit
         self._attr_translation_key = key

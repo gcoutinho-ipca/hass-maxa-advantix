@@ -8,6 +8,8 @@ the work it needs to.
 
 from __future__ import annotations
 
+import itertools
+
 import pytest
 
 from custom_components.maxa_advantix.registers import (
@@ -32,7 +34,7 @@ def test_every_required_address_is_covered_by_some_block():
 
 
 def test_blocks_are_sorted_and_do_not_overlap():
-    for earlier, later in zip(READ_BLOCKS, READ_BLOCKS[1:], strict=False):
+    for earlier, later in itertools.pairwise(READ_BLOCKS):
         assert earlier.end < later.start
 
 
@@ -137,9 +139,10 @@ def test_block_repr_is_readable_in_diagnostics():
 # ── the tuning ────────────────────────────────────────────────────────────────
 def _line_time(blocks: tuple[ReadBlock, ...]) -> float:
     """Estimated bus time for one poll, in milliseconds."""
-    return len(blocks) * TRANSACTION_OVERHEAD_MS + sum(
-        block.count for block in blocks
-    ) * PER_REGISTER_MS
+    return (
+        len(blocks) * TRANSACTION_OVERHEAD_MS
+        + sum(block.count for block in blocks) * PER_REGISTER_MS
+    )
 
 
 def test_the_chosen_tolerance_is_still_the_cheapest():

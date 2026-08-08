@@ -138,7 +138,5 @@ def count(words: list[int] | None) -> int:
     if not words:
         return 0
     return sum(
-        bin(value & 0xFFFF).count("1")
-        for value in words[:3]
-        if value is not None and value >= 0
+        bin(value & 0xFFFF).count("1") for value in words[:3] if value is not None and value >= 0
     )

@@ -49,7 +49,7 @@ def _keys(node: Any, prefix: str = "") -> set[str]:
 
 
 def _declared_translation_keys(platform: str) -> set[str]:
-    """Translation keys the platform module assigns, found by reading the source.
+    """Collect the translation keys the platform module assigns, by reading its source.
 
     Regex rather than import, so this test does not need Home Assistant. The two
     forms used in this codebase are a class attribute and an assignment in

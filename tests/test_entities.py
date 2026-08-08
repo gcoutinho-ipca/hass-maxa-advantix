@@ -15,9 +15,7 @@ from custom_components.maxa_advantix.const import DOMAIN
 from .fake_client import FakeModbusClient
 
 
-async def test_entry_loads_and_unloads(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry
-) -> None:
+async def test_entry_loads_and_unloads(hass: HomeAssistant, loaded_entry: MockConfigEntry) -> None:
     assert loaded_entry.state is ConfigEntryState.LOADED
     assert await hass.config_entries.async_unload(loaded_entry.entry_id)
     await hass.async_block_till_done()
@@ -41,13 +39,10 @@ async def test_setup_fails_cleanly_when_the_machine_does_not_answer(
     assert config_entry.state is ConfigEntryState.SETUP_RETRY
 
 
-async def test_every_platform_is_set_up(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry
-) -> None:
+async def test_every_platform_is_set_up(hass: HomeAssistant, loaded_entry: MockConfigEntry) -> None:
     registry = er.async_get(hass)
     domains = {
-        entry.domain
-        for entry in er.async_entries_for_config_entry(registry, loaded_entry.entry_id)
+        entry.domain for entry in er.async_entries_for_config_entry(registry, loaded_entry.entry_id)
     }
     assert domains == {
         Platform.SENSOR,
@@ -300,9 +295,7 @@ async def test_active_alarms_sensor_lists_codes(
     assert any("E042" in line for line in state.attributes["alarms"])
 
 
-async def test_services_are_registered(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry
-) -> None:
+async def test_services_are_registered(hass: HomeAssistant, loaded_entry: MockConfigEntry) -> None:
     for service in (
         "set_mode",
         "set_dhw_setpoint",
@@ -316,9 +309,7 @@ async def test_services_are_registered(
 async def test_set_mode_service_writes_the_state(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, fake_client: FakeModbusClient
 ) -> None:
-    await hass.services.async_call(
-        DOMAIN, "set_mode", {"mode": "cooling_dhw"}, blocking=True
-    )
+    await hass.services.async_call(DOMAIN, "set_mode", {"mode": "cooling_dhw"}, blocking=True)
     await hass.async_block_till_done()
     assert (7200, 5) in fake_client.writes
 

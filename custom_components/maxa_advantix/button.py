@@ -17,6 +17,7 @@ async def async_setup_entry(
     entry: MaxaConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Set up the anti-legionella and release-control buttons."""
     coordinator = entry.runtime_data
     async_add_entities([MaxaLegionellaButton(coordinator), MaxaReleaseButton(coordinator)])
 

@@ -31,6 +31,7 @@ async def async_setup_entry(
     entry: MaxaConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Set up the problem sensor, the flow check, the flags and one entity per alarm."""
     coordinator = entry.runtime_data
     entities: list[BinarySensorEntity] = [
         MaxaProblemBinarySensor(coordinator),

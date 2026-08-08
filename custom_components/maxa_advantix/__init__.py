@@ -60,9 +60,7 @@ def _read_only(entry: MaxaConfigEntry) -> bool:
     Options win over data, so the setting can be changed after setup without
     reconfiguring the connection.
     """
-    return entry.options.get(
-        CONF_READ_ONLY, entry.data.get(CONF_READ_ONLY, DEFAULT_READ_ONLY)
-    )
+    return entry.options.get(CONF_READ_ONLY, entry.data.get(CONF_READ_ONLY, DEFAULT_READ_ONLY))
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -82,9 +80,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MaxaConfigEntry) -> bool
         CONF_SCAN_INTERVAL,
         entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
     )
-    coordinator = MaxaCoordinator(
-        hass, entry, client, scan_interval, read_only=_read_only(entry)
-    )
+    coordinator = MaxaCoordinator(hass, entry, client, scan_interval, read_only=_read_only(entry))
 
     # Fail setup cleanly if the machine does not answer right now: a retry is
     # scheduled by Home Assistant, which is better than a device full of

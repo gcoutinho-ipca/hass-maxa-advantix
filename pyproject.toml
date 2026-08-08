@@ -30,6 +30,25 @@ ignore = [
     "D203",  # incompatible with D211
     "D213",  # incompatible with D212
     "D107",  # __init__ docstring: the class docstring covers it
+    # D102/D105 are off for a reason worth stating, since turning a rule off is the
+    # kind of decision that gets mistaken for laziness later.
+    #
+    # Almost every public method here is a Home Assistant property override:
+    # `native_value`, `is_on`, `hvac_mode`, `extra_state_attributes`. Their contract
+    # belongs to the base class and their subject belongs to the class docstring,
+    # which in this codebase always says what the entity actually represents. A
+    # docstring on `native_value` inside a class documented as "Water delta T
+    # (outlet - inlet), design figure 5 K" can only repeat one of the two, and sixty
+    # of those push the comments that carry real information further apart.
+    #
+    # D100, D101 and D103 stay on: modules, classes and plain functions are where the
+    # explanations live here, and those are enforced.
+    "D102",  # undocumented public method: see above
+    "D105",  # undocumented magic method: `__str__` and `__contains__` speak for themselves
+    # Entity attributes like `_attr_hvac_modes` are lists by the base class's own
+    # annotation, so ClassVar would contradict it. They are declarative constants,
+    # never mutated, and the shared-state hazard the rule warns about does not arise.
+    "RUF012",
 ]
 
 [tool.ruff.lint.per-file-ignores]

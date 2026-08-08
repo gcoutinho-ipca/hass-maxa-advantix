@@ -28,8 +28,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util.yaml import parse_yaml
 
 BLUEPRINTS = sorted(
-    (pathlib.Path(__file__).parent.parent / "blueprints" / "automation" / "maxa_advantix")
-    .glob("*.yaml")
+    (pathlib.Path(__file__).parent.parent / "blueprints" / "automation" / "maxa_advantix").glob(
+        "*.yaml"
+    )
 )
 
 #: Every blueprint shipped, by file name, so a new one cannot be added without

@@ -121,7 +121,7 @@ class MaxaStateSensor(MaxaEntity, SensorEntity):
 
 
 class MaxaDeltaTSensor(MaxaEntity, SensorEntity):
-    """Water ΔT (outlet − inlet). Design figure 5 K, tolerated maximum 8 K."""
+    """Water ΔT (outlet - inlet). Design figure 5 K, tolerated maximum 8 K."""
 
     _attr_native_unit_of_measurement = "K"
     _attr_state_class = SensorStateClass.MEASUREMENT

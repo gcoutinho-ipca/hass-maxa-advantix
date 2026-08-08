@@ -37,7 +37,8 @@ class SetpointDef:
     data_key: str
     icon: str
     enabled_default: bool = True
-    diagnostic: bool = False
+    #: Put it under the device's configuration section instead of with the readings.
+    config_category: bool = False
 
 
 SETPOINTS: tuple[SetpointDef, ...] = (
@@ -53,7 +54,7 @@ SETPOINTS: tuple[SetpointDef, ...] = (
         "",
         "mdi:water-boiler",
         enabled_default=False,
-        diagnostic=True,
+        config_category=True,
     ),
 )
 
@@ -63,6 +64,7 @@ async def async_setup_entry(
     entry: MaxaConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Set up one number entity per writable setpoint."""
     coordinator = entry.runtime_data
     async_add_entities(MaxaSetpointNumber(coordinator, d) for d in SETPOINTS)
 
@@ -83,7 +85,7 @@ class MaxaSetpointNumber(MaxaEntity, NumberEntity):
         self._attr_native_min_value = low / 10
         self._attr_native_max_value = high / 10
         self._attr_entity_registry_enabled_default = definition.enabled_default
-        if definition.diagnostic:
+        if definition.config_category:
             self._attr_entity_category = EntityCategory.CONFIG
 
     @property

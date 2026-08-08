@@ -214,7 +214,7 @@ class HeatPump:
             }
             # The real gateway answers unmapped addresses with zero rather than an
             # exception, and code that assumes otherwise breaks against it.
-            value = int(round(table.get(address, 0)))
+            value = round(table.get(address, 0))
             return value & 0xFFFF
 
     def write(self, address: int, value: int) -> int | None:
@@ -375,7 +375,7 @@ def main() -> int:
     # compose file does not publish the port to the host.
     parser.add_argument(
         "--host",
-        default="0.0.0.0",  # noqa: S104
+        default="0.0.0.0",
         help="address to bind (default all interfaces)",
     )
     parser.add_argument("--port", type=int, default=5020, help="TCP port (default 5020)")

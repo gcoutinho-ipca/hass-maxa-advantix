@@ -51,7 +51,7 @@ _PROBE_ADDRESS = STATE_REGISTER
 
 
 def _schema(defaults: dict[str, Any]) -> vol.Schema:
-    """Connection form, pre-filled from `defaults` (used by reconfigure too)."""
+    """Build the connection form, pre-filled from `defaults` (reconfigure uses it too)."""
     return vol.Schema(
         {
             vol.Required(CONF_HOST, default=defaults.get(CONF_HOST, vol.UNDEFINED)): TextSelector(),
@@ -60,9 +60,7 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             ),
             vol.Required(
                 CONF_SLAVE, default=defaults.get(CONF_SLAVE, DEFAULT_SLAVE)
-            ): NumberSelector(
-                NumberSelectorConfig(min=1, max=247, mode=NumberSelectorMode.BOX)
-            ),
+            ): NumberSelector(NumberSelectorConfig(min=1, max=247, mode=NumberSelectorMode.BOX)),
             vol.Required(
                 CONF_MODEL, default=defaults.get(CONF_MODEL, DEFAULT_MODEL)
             ): SelectSelector(
@@ -108,14 +106,12 @@ class MaxaConfigFlow(ConfigFlow, domain=DOMAIN):
         except ModbusError as err:
             _LOGGER.debug("Probe failed for %s: %s", data[CONF_HOST], err)
             return {"base": "cannot_connect"}
-        except Exception:  # noqa: BLE001 - never let a surprise break the form
+        except Exception:
             _LOGGER.exception("Unexpected error probing %s", data[CONF_HOST])
             return {"base": "unknown"}
         return {}
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             data = _normalise(user_input)
@@ -190,9 +186,7 @@ class MaxaOptionsFlow(OptionsFlow):
     connection. Changing either triggers a reload of the entry.
     """
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
             return self.async_create_entry(
                 data={

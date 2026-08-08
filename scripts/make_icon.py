@@ -61,13 +61,12 @@ def gradient(size: int) -> Image.Image:
     for y in range(size):
         for x in range(size):
             t = (x + y) / (2 * (size - 1))
-            pixels[x, y] = tuple(
-                round(COLD[i] + (HOT[i] - COLD[i]) * t) for i in range(3)
-            )
+            pixels[x, y] = tuple(round(COLD[i] + (HOT[i] - COLD[i]) * t) for i in range(3))
     return image
 
 
 def rounded_mask(size: int, radius_fraction: float = 0.22) -> Image.Image:
+    """Alpha mask for the rounded square the icon sits in."""
     mask = Image.new("L", (size, size), 0)
     ImageDraw.Draw(mask).rounded_rectangle(
         [0, 0, size - 1, size - 1], radius=int(size * radius_fraction), fill=255
@@ -95,6 +94,7 @@ def blade(centre: float, r0: float, r1: float, theta0: float) -> list[tuple[floa
 
 
 def build(size: int) -> Image.Image:
+    """Render the whole icon at `size` pixels, supersampled and downsampled."""
     big = size * SS
     background = gradient(big)
     icon = Image.new("RGBA", (big, big), (0, 0, 0, 0))

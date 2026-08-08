@@ -52,7 +52,15 @@ SETPOINT_RANGES: Final[dict[int, tuple[int, int, str]]] = {
     R_SET_DHW_HEATER: (0, 800, "DHW preheater setpoint"),  # 0.0-80.0 °C
 }
 
-# Enable bits, register 7201.
+# Enable bits, register 7201, and command bits, register 7202.
+#
+# Several of these are never written by this integration. They stay because the two
+# registers are bit fields, and a bit field is only safe to write if the whole layout
+# is known: bit 5 of 7202 being a forced purge is why nothing here sets it by
+# accident. This map came out of reverse engineering a controller whose protocol is
+# not published anywhere, so a name next to a bit position is the documentation, and
+# deleting the unused ones would throw away the expensive half of the work while
+# saving nothing. Anyone extending the write layer starts from here.
 ENABLE_STATE: Final = 1 << 0
 ENABLE_SETPOINT: Final = 1 << 1
 ENABLE_SECOND_SETPOINT: Final = 1 << 2
@@ -60,7 +68,6 @@ ENABLE_AMBIENT_CALL: Final = 1 << 3
 ENABLE_DHW_CALL: Final = 1 << 4
 ENABLE_LEGIONELLA: Final = 1 << 5
 
-# Command bits, register 7202.
 CMD_SECOND_SETPOINT: Final = 1 << 0
 CMD_AMBIENT: Final = 1 << 1
 CMD_DHW: Final = 1 << 2
@@ -85,8 +92,7 @@ def validate_state(state: int) -> None:
     """Reject anything register 7200 does not accept."""
     if state not in VALID_STATES:
         raise InvalidValueError(
-            f"state {state} is not allowed in register 7200 "
-            f"(only {sorted(VALID_STATES)})"
+            f"state {state} is not allowed in register 7200 (only {sorted(VALID_STATES)})"
         )
 
 
@@ -143,9 +149,7 @@ def apply_calls(client: ModbusTCPClient, ambient: bool, dhw: bool) -> None:
     client.write_register(R_COMMAND, command_mask(ambient=ambient, dhw=dhw))
 
 
-def apply_state_and_calls(
-    client: ModbusTCPClient, state: int, ambient: bool, dhw: bool
-) -> None:
+def apply_state_and_calls(client: ModbusTCPClient, state: int, ambient: bool, dhw: bool) -> None:
     """Set mode and calls in one pass, in the order the controller expects."""
     validate_state(state)
     client.write_register(R_ENABLE, enable_mask(ambient=ambient, dhw=dhw))
@@ -187,7 +191,7 @@ def release(client: ModbusTCPClient) -> None:
     for address in (R_COMMAND, R_STATE, R_ENABLE):
         try:
             client.write_register(address, 0)
-        except Exception as err:  # noqa: BLE001 - releasing is best effort
+        except Exception as err:
             problems.append(f"{address}: {err}")
     if problems:
         raise InvalidValueError("could not fully release control: " + "; ".join(problems))

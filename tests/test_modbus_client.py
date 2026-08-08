@@ -45,7 +45,7 @@ def patch_socket(monkeypatch: pytest.MonkeyPatch):
     created: list[FakeSocket] = []
 
     def install(reply: bytes, **kwargs) -> list[FakeSocket]:
-        def create_connection(_address, timeout=None):  # noqa: ARG001
+        def create_connection(_address, timeout=None):
             sock = FakeSocket(reply, **kwargs)
             created.append(sock)
             return sock

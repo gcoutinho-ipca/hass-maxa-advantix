@@ -36,13 +36,13 @@ def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
 
 @pytest.fixture
 def fake_client() -> FakeModbusClient:
-    """A fresh fake machine per test."""
+    """Return a fresh fake machine per test."""
     return FakeModbusClient()
 
 
 @pytest.fixture
 def config_entry() -> MockConfigEntry:
-    """A config entry matching what the config flow produces."""
+    """Return a config entry matching what the config flow produces."""
     return MockConfigEntry(
         domain=DOMAIN,
         title="i-HWAK V4 (192.168.1.50)",
@@ -63,7 +63,7 @@ async def loaded_entry(
     fake_client: FakeModbusClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> AsyncGenerator[MockConfigEntry]:
-    """A fully set up integration talking to the fake machine.
+    """Set the integration up against the fake machine.
 
     Unloading on teardown is not tidiness. A write schedules a delayed refresh
     about eight seconds out, and unloading is what cancels it. Leaving it pending

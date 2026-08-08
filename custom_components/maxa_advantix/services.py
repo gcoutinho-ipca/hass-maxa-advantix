@@ -76,9 +76,7 @@ def _coordinator(hass: HomeAssistant, call: ServiceCall) -> MaxaCoordinator:
     elif not entries:
         raise ServiceValidationError("No MAXA heat pump is configured")
     else:
-        raise ServiceValidationError(
-            "More than one heat pump is configured; pass config_entry_id"
-        )
+        raise ServiceValidationError("More than one heat pump is configured; pass config_entry_id")
     if target is None or getattr(target, "runtime_data", None) is None:
         raise ServiceValidationError("Heat pump not found, or not loaded")
     return target.runtime_data

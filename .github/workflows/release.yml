@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Pinned to a commit SHA, not a tag. See .github/workflows/validate.yml.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # `hacs.json` declares zip_release, so HACS downloads this asset instead of
       # cloning the repository. The tag and the manifest version must agree, or
